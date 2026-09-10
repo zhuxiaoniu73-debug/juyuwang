@@ -146,8 +146,19 @@ button, input, select { font: inherit; color: inherit; }
   letter-spacing: .1em;
   white-space: nowrap;
 }
-/* 极窄屏才收起,再窄就要挤掉搜索框了 */
-@media (max-width: 359px) { .logo-owner { display: none; } }
+/* 手机上放不下「站名 + 署名」两截,那就让署名直接当品牌 —— 
+   反正这是私人片库,名字比「影视收藏馆」四个字更该留在顶栏 */
+@media (max-width: 519px) {
+  .logo-text { display: none; }
+  .logo-owner {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .04em;
+  }
+}
 
 .footer-sign { color: var(--text-dim); font-size: 12.5px; letter-spacing: .06em; white-space: nowrap; }
 .footer-sign b { color: var(--gold); font-weight: 600; }
