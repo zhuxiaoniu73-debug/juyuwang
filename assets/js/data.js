@@ -16,6 +16,7 @@
  *   rating      评分           (可选,0-10)
  *   description 简介           Description
  *   resource    资源入口链接    Resource URL 留空则详情页按钮置灰
+ *   resourceNote 提取码/说明    Resource Note(可选,显示在资源按钮下面)
  *   added       收录日期        (YYYY-MM-DD,「最新添加」按它排序)
  *   hot         是否热门        (true 会进首页「热门影视」)
  */

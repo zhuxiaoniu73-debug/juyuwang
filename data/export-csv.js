@@ -8,7 +8,7 @@ global.window = {};
 require(path.join(__dirname, '..', 'assets', 'js', 'data.js'));
 
 const COLS = ['Name', 'Slug', 'Image', 'Category', 'Genre', 'Year',
-              'Region', 'Actors', 'Description', 'Resource URL', 'Added', 'Featured'];
+              'Region', 'Actors', 'Description', 'Resource URL', 'Resource Note', 'Added', 'Featured'];
 
 const cell = v => {
   v = v == null ? '' : String(v);
@@ -26,6 +26,7 @@ const rows = window.MEDIA_DB.map(i => [
   (i.actors || []).join('; '),
   i.description,
   i.resource || '',
+  i.resourceNote || '',
   i.added,
   i.hot ? 'true' : 'false'
 ].map(cell).join(','));

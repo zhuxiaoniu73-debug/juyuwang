@@ -26,6 +26,7 @@
 | **Actors**(演员信息) | Plain text(多行) | 否 | `actors` | CSV 里用 `; ` 分隔 |
 | **Description**(影视简介) | Rich text | 否 | `description` | |
 | **Resource URL**(资源入口链接) | Link | 否 | `resource` | 详情页「资源入口」按钮;留空按钮置灰 |
+| **Resource Note**(提取码/说明) | Plain text | 否 | `resourceNote` | 网盘提取码之类,显示在资源按钮下面 |
 | **Added**(收录日期) | Date | 否 | `added` | 首页「最新添加」按它倒序 |
 | **Featured**(热门) | Switch | 否 | `hot` | 打开的会进首页「热门影视」 |
 | **Rating**(评分) | Number(1 位小数) | 否 | `rating` | 0–10,海报右上角角标 |

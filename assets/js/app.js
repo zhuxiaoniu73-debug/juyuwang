@@ -584,7 +584,11 @@
           : '<span class="btn" aria-disabled="true">' + svg('link') + '暂无资源链接</span>') +
         '<a class="btn btn-ghost" href="list.html?category=' + encodeURIComponent(item.category) + '">' +
           svg('grid') + '更多' + esc(item.category) + '</a>' +
-        (item.resource ? '' : '<p class="resource-note">在 assets/js/data.js 里给这条记录填上 resource 字段,按钮就会亮起来。</p>') +
+        (item.resource
+          ? (item.resourceNote
+              ? '<p class="resource-note">' + esc(item.resourceNote) + '</p>'
+              : '')
+          : '<p class="resource-note">用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。</p>') +
       '</div>';
 
     // 相关推荐:同分类下类型标签重合最多的

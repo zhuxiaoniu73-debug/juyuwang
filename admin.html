@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07070a">
+<meta name="robots" content="noindex">
+<title>录入台 · 影视收藏馆</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e5322d'/%3E%3Cpath d='M16 9v14M9 16h14' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  /* 录入台专用样式,不影响对外的三个页面 */
+  body { padding-bottom: 40px; }
+
+  .admin-top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 18px var(--page-x); border-bottom: 1px solid var(--line-soft);
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(7,7,10,.94); backdrop-filter: blur(16px);
+  }
+  .admin-top h1 { margin: 0; font-size: 19px; font-weight: 700; }
+  .admin-top .badge {
+    padding: 3px 10px; border-radius: 999px; font-size: 12px;
+    background: rgba(255,255,255,.07); color: var(--text-dim);
+  }
+  .admin-top .badge b { color: var(--gold); font-variant-numeric: tabular-nums; }
+  .admin-top .spacer { margin-inline-start: auto; }
+  .admin-top .btn { height: 38px; padding: 0 16px; font-size: 14px; }
+
+  .admin-wrap {
+    display: grid; gap: clamp(18px, 3vw, 32px);
+    padding: clamp(18px, 3vw, 32px) var(--page-x);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (min-width: 1024px) { .admin-wrap { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); } }
+
+  .panel {
+    border: 1px solid var(--line-soft); border-radius: var(--radius-lg);
+    background: linear-gradient(160deg, var(--surface), #0c0c12); padding: 20px;
+  }
+  @media (min-width: 1024px) { .panel.sticky { position: sticky; top: 92px; } }
+  .panel h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .panel .hint { margin: 0 0 16px; color: var(--text-faint); font-size: 12.5px; line-height: 1.6; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; margin-bottom: 6px; font-size: 12.5px; color: var(--text-dim); letter-spacing: .05em; }
+  .field input[type=text], .field input[type=url], .field input[type=number],
+  .field input[type=date], .field select, .field textarea {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.04);
+    font-size: 14.5px; transition: border-color .2s, background .2s;
+  }
+  .field textarea { resize: vertical; min-height: 92px; line-height: 1.7; }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: #45454f; background: rgba(255,255,255,.07);
+  }
+  .field-row { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .field-row-3 { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  .switch { display: flex; align-items: center; gap: 9px; font-size: 14px; cursor: pointer; }
+  .switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  #genre-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 8px; min-height: 32px; }
+
+  /* 海报区 */
+  .poster-drop {
+    display: flex; gap: 14px; align-items: stretch;
+    padding: 12px; border: 1px dashed var(--line); border-radius: 12px;
+    transition: border-color .2s, background .2s;
+  }
+  .poster-drop.is-over { border-color: var(--accent-soft); background: rgba(229,50,45,.08); }
+  #poster-preview {
+    width: 84px; flex-shrink: 0; aspect-ratio: 2/3; border-radius: 8px;
+    background: var(--surface-2); display: grid; place-items: center; overflow: hidden;
+  }
+  #poster-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .poster-empty { font-size: 11px; color: var(--text-faint); text-align: center; padding: 6px; line-height: 1.5; }
+  .poster-ops { display: flex; flex-direction: column; gap: 8px; justify-content: center; min-width: 0; flex: 1; }
+  .poster-ops .file-btn {
+    display: inline-flex; align-items: center; justify-content: center; height: 34px;
+    border: 1px solid var(--line); border-radius: 999px; font-size: 13px;
+    cursor: pointer; background: rgba(255,255,255,.05);
+  }
+  .poster-ops .file-btn:hover { background: rgba(255,255,255,.1); }
+  .poster-ops input[type=file] { display: none; }
+  #poster-hint { font-size: 11.5px; color: var(--text-faint); }
+
+  .form-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .form-actions .btn { flex: 1; height: 44px; }
+
+  /* 批量区 */
+  .bulk textarea {
+    width: 100%; min-height: 130px; padding: 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.04);
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.8;
+    resize: vertical;
+  }
+  .bulk .fmt {
+    margin: 10px 0 12px; padding: 12px 14px; border-radius: 10px;
+    background: rgba(255,255,255,.03); border: 1px solid var(--line-soft);
+    font-size: 12.5px; color: var(--text-dim); line-height: 1.9;
+  }
+  .bulk .fmt code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    color: var(--gold); font-size: 12px;
+  }
+
+  /* 条目列表 */
+  .list-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .list-head input[type=search] {
+    flex: 1 1 180px; height: 36px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.04); font-size: 14px;
+  }
+  #list { list-style: none; margin: 0; padding: 0; max-height: 64vh; overflow-y: auto; }
+  .row-item {
+    display: flex; align-items: center; gap: 12px; padding: 9px 10px;
+    border-radius: 10px; cursor: pointer; border: 1px solid transparent;
+  }
+  .row-item:hover { background: var(--surface-2); border-color: var(--line); }
+  .row-item.is-missing { box-shadow: inset 2px 0 0 var(--accent); }
+  .row-thumb {
+    width: 34px; height: 51px; border-radius: 5px; flex-shrink: 0;
+    background: var(--surface-2) center/cover no-repeat;
+    display: grid; place-items: center; font-size: 15px; color: var(--text-faint);
+  }
+  .row-main { min-width: 0; flex: 1; }
+  .row-title { display: block; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-meta { display: block; font-size: 12px; color: var(--text-faint); }
+  .row-flag { display: flex; gap: 6px; font-size: 11.5px; color: var(--text-faint); white-space: nowrap; }
+  .row-flag b { font-weight: 500; padding: 1px 7px; border-radius: 5px; }
+  .flag-miss { color: var(--accent-soft); background: rgba(229,50,45,.14); }
+  .flag-warn { color: var(--gold); background: rgba(240,194,106,.12); }
+  .row-empty { padding: 30px; text-align: center; color: var(--text-faint); font-size: 13.5px; }
+
+  #export-text {
+    width: 100%; min-height: 180px; margin-top: 12px; padding: 12px;
+    border-radius: 10px; border: 1px solid var(--line); background: #0a0a0f;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.6;
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
+    z-index: 90; padding: 11px 20px; border-radius: 999px;
+    background: #f4f4f7; color: #111; font-size: 14px; font-weight: 500;
+    box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s;
+  }
+  .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+  .toast.is-bad { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body data-page="admin">
+
+<div class="admin-top">
+  <a class="logo" href="index.html">
+    <span class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 4h18v16H3z"/><path d="M7 4v16M17 4v16M3 10h18M3 14h18"/>
+      </svg>
+    </span>
+  </a>
+  <h1>录入台</h1>
+  <span class="badge">共 <b id="stat-total">0</b> 条</span>
+  <span class="badge">缺链接 <b id="stat-missing">0</b> 条</span>
+
+  <span class="spacer"></span>
+  <button type="button" class="btn btn-ghost" id="btn-reset">丢弃草稿</button>
+  <button type="button" class="btn btn-ghost" id="btn-show">查看文本</button>
+  <button type="button" class="btn btn-ghost" id="btn-download">下载 data.js</button>
+  <button type="button" class="btn btn-primary" id="btn-copy">复制 data.js</button>
+</div>
+
+<div class="admin-wrap">
+
+  <!-- ======================= 左:单条录入 ======================= -->
+  <form class="panel sticky" id="entry-form">
+    <h2 id="form-title">新增一条</h2>
+    <p class="hint">改完记得点右上角「复制 data.js」,粘回 <code>assets/js/data.js</code> 才算存下来。</p>
+
+    <div class="field">
+      <label for="f-title">片名 *</label>
+      <input type="text" id="f-title" required placeholder="亮剑">
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="f-category">分类</label>
+        <select id="f-category"></select>
+      </div>
+      <div class="field">
+        <label for="f-year">年份</label>
+        <input type="number" id="f-year" min="1900" max="2100" placeholder="2005">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>类型标签(点选,回车可自定义)</label>
+      <div id="genre-chips"></div>
+      <input type="text" id="genre-add" placeholder="输入新标签后回车">
+    </div>
+
+    <div class="field-row-3">
+      <div class="field">
+        <label for="f-region">地区</label>
+        <input type="text" id="f-region" placeholder="中国">
+      </div>
+      <div class="field">
+        <label for="f-rating">评分</label>
+        <input type="number" id="f-rating" step="0.1" min="0" max="10" placeholder="9.5">
+      </div>
+      <div class="field">
+        <label for="f-added">收录日期</label>
+        <input type="date" id="f-added">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-director">导演</label>
+      <input type="text" id="f-director" placeholder="陈健 / 张前">
+    </div>
+
+    <div class="field">
+      <label for="f-actors">演员(顿号或逗号分隔)</label>
+      <input type="text" id="f-actors" placeholder="李幼斌、何政军、张光北">
+    </div>
+
+    <div class="field">
+      <label for="f-desc">简介</label>
+      <textarea id="f-desc" placeholder="从豆瓣、维基复制一段贴进来就行"></textarea>
+    </div>
+
+    <div class="field">
+      <label>海报</label>
+      <div class="poster-drop" id="poster-drop">
+        <div id="poster-preview"><span class="poster-empty">留空 → 自动生成配色海报</span></div>
+        <div class="poster-ops">
+          <label class="file-btn">
+            选图片 / 拖进来 / Ctrl+V
+            <input type="file" id="f-poster-file" accept="image/*">
+          </label>
+          <input type="url" id="f-poster-url" placeholder="或粘贴图片地址 https://…">
+          <span id="poster-hint"></span>
+          <button type="button" class="file-btn" id="poster-clear" hidden>清除海报</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-res">资源入口链接</label>
+      <input type="url" id="f-res" placeholder="https://pan.quark.cn/s/…">
+    </div>
+
+    <div class="field">
+      <label for="f-note">提取码 / 说明</label>
+      <input type="text" id="f-note" placeholder="提取码 8k2p,夸克网盘">
+    </div>
+
+    <div class="field">
+      <label for="f-id">id(详情页地址,留空自动用片名)</label>
+      <input type="text" id="f-id" placeholder="留空即可">
+    </div>
+
+    <label class="switch">
+      <input type="checkbox" id="f-hot"> 放进首页「热门影视」
+    </label>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">保存这条</button>
+      <button type="button" class="btn btn-ghost" id="btn-clear">清空</button>
+      <button type="button" class="btn btn-ghost" id="btn-del" hidden>删除</button>
+    </div>
+  </form>
+
+  <!-- ======================= 右:批量 + 列表 ======================= -->
+  <div>
+    <div class="panel bulk" style="margin-bottom: 20px">
+      <h2>批量粘贴</h2>
+      <p class="hint">一行一部。<b>片名对得上已有条目就只补链接</b>,对不上才新建 —— 所以想一次性把网盘链接填进来,用第一种写法最快。</p>
+
+      <div class="fmt">
+        只补链接:<code>亮剑 | https://pan.quark.cn/s/abc123</code><br>
+        带提取码:<code>亮剑 | https://pan.quark.cn/s/abc123 | 提取码 8k2p</code><br>
+        新增条目:<code>片名 | 分类 | 年份 | 地区 | 类型 | 链接 | 提取码</code><br>
+        分隔符 <code>|</code> 前后有没有空格都行,中文竖线和 Tab 也认。
+      </div>
+
+      <textarea id="bulk-text" placeholder="亮剑 | https://pan.quark.cn/s/abc123 | 提取码 8k2p
+潜伏 | https://pan.baidu.com/s/xyz
+繁花 | 电视剧 | 2023 | 中国 | 都市/年代 | https://pan.quark.cn/s/def456"></textarea>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="bulk-run">解析并写入</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>已有条目</h2>
+      <p class="hint">点一条进左边表单编辑。左边有红条的是还缺资源链接的。</p>
+      <div class="list-head">
+        <input type="search" id="list-search" placeholder="搜片名 / 分类 / 类型">
+        <label class="switch"><input type="checkbox" id="only-missing"> 只看缺链接的</label>
+      </div>
+      <ul id="list"></ul>
+      <textarea id="export-text" hidden readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>
