@@ -43,6 +43,34 @@
   var DB = (DB_OK ? window.MEDIA_DB : []).map(normalize);
 
   var LOG = window.MCLog || { info: function () {}, warn: function () {}, error: function () {} };
+  var PST = window.MCPoster;
+
+  /* 详情页传上来的海报先存在浏览器本地,这里盖到数据上,站点立刻就能看到。
+     真正落盘要去录入台并入 data.js —— 页面上会一直提示。 */
+  if (PST) {
+    var localPosters = PST.all();
+    var localUsed = 0;
+    DB.forEach(function (it) {
+      if (localPosters[it.id]) { it.poster = localPosters[it.id]; it._local = true; localUsed++; }
+    });
+    if (localUsed) LOG.info('套用本地海报', localUsed + ' 张(尚未写进 data.js)');
+  }
+
+  /* 站内「链接」模块填的网盘地址,同样先盖在数据上,立刻生效 */
+  if (window.MCLinks) {
+    var localLinks = window.MCLinks.all();
+    var linkUsed = 0;
+    DB.forEach(function (it) {
+      var v = localLinks[it.id];
+      if (v && v.resource) {
+        it.resource = v.resource;
+        if (v.resourceNote) it.resourceNote = v.resourceNote;
+        it._localLink = true;
+        linkUsed++;
+      }
+    });
+    if (linkUsed) LOG.info('套用本地链接', linkUsed + ' 条(尚未写进 data.js)');
+  }
   if (!DB_OK) {
     LOG.error('data.js 没读进来', 'window.MEDIA_DB 不是数组,多半是文件里有语法错误');
   } else {
@@ -848,6 +876,7 @@
     }
 
     document.title = item.title + ' · ' + ((window.SITE && window.SITE.full) || '影视收藏馆');
+    window.MC_CURRENT = { id: item.id, title: item.title };   // 「链接」模块默认填给这部
     var cfg = catOf(item.category);
     var h = hueOf(item.title + item.category);
 
@@ -860,7 +889,9 @@
     $('#crumb-cat').href = 'list.html?category=' + encodeURIComponent(item.category);
     $('#crumb-title').textContent = item.title;
 
-    $('#d-poster').appendChild(posterEl(item, { hover: false, name: true }));
+    var posterBox = $('#d-poster');
+    posterBox.appendChild(posterEl(item, { hover: false, name: true }));
+    initPosterUpload(posterBox, item);
 
     var facts = [
       item.rating ? '<span class="detail-score"><b>' + item.rating.toFixed(1) + '</b><span>/ 10</span></span>' : '',
@@ -913,9 +944,8 @@
         '<a class="btn btn-ghost" href="list.html?category=' + encodeURIComponent(item.category) + '">' +
           svg('grid') + '更多' + esc(item.category) + '</a>' +
         (resUrl
-          ? (item.resourceNote
-              ? '<p class="resource-note">' + esc(item.resourceNote) + '</p>'
-              : '')
+          ? '<p class="resource-note">' + (item.resourceNote ? esc(item.resourceNote) : '') +
+            (item._localLink ? ' <b class="note-local">这条链接还没写进 data.js</b>' : '') + '</p>'
           : '<p class="resource-note">' + (item.resource
               ? '这条的资源链接不是有效地址,录入台里改一下。'
               : '用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。') + '</p>') +
@@ -933,6 +963,88 @@
     fillRow($('#row-related'), related);
     var rel = $('#related-section');
     if (rel) rel.hidden = related.length === 0;
+  }
+
+  /** 详情页的海报上传:点、拖、粘贴都行,换完立刻生效 */
+  function initPosterUpload(box, item) {
+    if (!box || !PST) return;
+
+    var ui = el('div', 'poster-upload');
+    ui.innerHTML =
+      '<input type="file" accept="image/*" hidden>' +
+      '<button type="button" class="btn btn-ghost poster-up-btn"></button>' +
+      '<p class="poster-up-note"></p>';
+    box.appendChild(ui);
+
+    var input = $('input', ui);
+    var btn = $('.poster-up-btn', ui);
+    var note = $('.poster-up-note', ui);
+
+    function refresh() {
+      var isLocal = !!PST.get(item.id);
+      btn.textContent = item.poster ? '换一张海报' : '上传海报';
+      note.innerHTML = isLocal
+        ? '这张存在本机,<b>还没写进 data.js</b> —— 去录入台点「并入草稿」再导出。' +
+          ' <a href="#" class="poster-up-undo">撤销</a>'
+        : (item.poster ? '' : '现在用的是按片名生成的图。拖一张图片到海报上,或点上面的按钮。');
+      var undo = $('.poster-up-undo', ui);
+      if (undo) undo.addEventListener('click', function (e) {
+        e.preventDefault();
+        PST.remove(item.id);
+        location.reload();
+      });
+    }
+
+    function accept(file) {
+      if (!file) return;
+      btn.disabled = true;
+      btn.textContent = '处理中…';
+      PST.compress(file, function (uri, info) {
+        btn.disabled = false;
+        if (!PST.set(item.id, uri)) {
+          note.textContent = '存不下了 —— 浏览器空间满了,先去录入台并入并导出。';
+          refresh();
+          return;
+        }
+        var img = $('.poster', box);
+        if (img) img.innerHTML = '<img src="' + esc(uri) + '" alt="' + esc(item.title) + ' 海报">';
+        item.poster = uri;
+        refresh();
+        note.insertAdjacentHTML('afterbegin',
+          '<span class="poster-up-ok">已换上(' + Math.round(info.bytes / 1024) + ' KB)</span> ');
+      }, function (why) {
+        btn.disabled = false;
+        refresh();
+        note.innerHTML = '<span class="poster-up-bad">' + esc(why) + '</span>';
+        LOG.warn('海报上传没成功', why);
+      });
+    }
+
+    btn.addEventListener('click', function () { input.click(); });
+    input.addEventListener('change', function () { accept(this.files[0]); this.value = ''; });
+
+    // 拖进来
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      box.addEventListener(ev, function (e) { e.preventDefault(); box.classList.add('is-drop'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      box.addEventListener(ev, function (e) { e.preventDefault(); box.classList.remove('is-drop'); });
+    });
+    box.addEventListener('drop', function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) accept(f);
+    });
+
+    // Ctrl+V 粘贴截图
+    document.addEventListener('paste', function (e) {
+      if (!e.clipboardData) return;
+      var items = e.clipboardData.items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') === 0) { accept(items[i].getAsFile()); e.preventDefault(); return; }
+      }
+    });
+
+    refresh();
   }
 
   /* ------------------------------------------------------------ 启动 */

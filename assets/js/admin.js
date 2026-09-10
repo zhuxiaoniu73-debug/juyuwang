@@ -33,6 +33,7 @@
     toast._t = setTimeout(function () { t.className = 'toast'; }, 2600);
     // 每个动作都会弹提示,顺手把日志刷一下 —— 否则要等定时器,操作完看不到
     if (typeof renderLog === 'function') renderLog();
+    if (typeof renderPending === 'function') renderPending();
   }
 
   /* ------------------------------------------------------------ 草稿 */
@@ -148,24 +149,10 @@
   $('#poster-clear').addEventListener('click', function () { setPoster(''); $('#f-poster-url').value = ''; });
   $('#f-poster-url').addEventListener('change', function () { setPoster(this.value.trim()); });
 
-  /** 本地图片压到 400×600 以内再转 data URI,免得 data.js 撑爆 */
+  /** 压缩交给共享模块(assets/js/poster.js),详情页用的是同一套 */
   function compress(file, cb) {
-    var reader = new FileReader();
-    reader.onload = function () {
-      var img = new Image();
-      img.onload = function () {
-        var W = 400, H = 600;
-        var scale = Math.min(W / img.width, H / img.height, 1);
-        var cw = Math.round(img.width * scale), ch = Math.round(img.height * scale);
-        var cv = document.createElement('canvas');
-        cv.width = cw; cv.height = ch;
-        cv.getContext('2d').drawImage(img, 0, 0, cw, ch);
-        cb(cv.toDataURL('image/jpeg', 0.72));
-      };
-      img.onerror = function () { toast('这个图片读不出来', true); };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+    if (!window.MCPoster) { toast('海报模块没加载', true); return; }
+    window.MCPoster.compress(file, cb, function (why) { toast(why, true); });
   }
 
   var drop = $('#poster-drop');
@@ -544,6 +531,101 @@
     toast('已回到文件内容');
   });
 
+  /* ------------------------------------------------- 详情页传上来的本地海报 */
+  function titleOf(id) {
+    for (var i = 0; i < draft.length; i++) if (draft[i].id === id) return draft[i].title;
+    return null;
+  }
+
+  function renderPending() {
+    var box = $('#pending-posters');
+    if (!box) return;
+
+    var posters = window.MCPoster ? window.MCPoster.all() : {};
+    var links = window.MCLinks ? window.MCLinks.all() : {};
+    var pIds = Object.keys(posters), lIds = Object.keys(links);
+    if (!pIds.length && !lIds.length) { box.hidden = true; return; }
+    box.hidden = false;
+
+    // 网盘链接
+    var lBox = $('#pending-links-box');
+    lBox.hidden = !lIds.length;
+    if (lIds.length) {
+      $('#pending-link-count').textContent = lIds.length;
+      $('#pending-links').innerHTML = lIds.map(function (id) {
+        var t = titleOf(id), v = links[id];
+        return '<li>' +
+          '<span class="plink-name">' + esc(t || id) + (t ? '' : ' <em>(草稿里没有)</em>') + '</span>' +
+          '<span class="plink-url">' + esc(v.resource) + '</span>' +
+          (v.resourceNote ? '<span class="plink-code">' + esc(v.resourceNote) + '</span>' : '') +
+        '</li>';
+      }).join('');
+    }
+
+    // 海报
+    var pBox = $('#pending-posters-box');
+    pBox.hidden = !pIds.length;
+    if (pIds.length) {
+      $('#pending-count').textContent = pIds.length;
+      $('#pending-size').textContent = Math.round(window.MCPoster.bytes() / 1024);
+      $('#pending-list').innerHTML = pIds.map(function (id) {
+        var t = titleOf(id);
+        return '<li class="pending-item">' +
+          '<span class="pending-thumb" style="background-image:url(' + esc(posters[id]) + ')"></span>' +
+          '<span class="pending-name">' + esc(t || id) +
+            (t ? '' : '<em>(草稿里没有这条)</em>') + '</span>' +
+        '</li>';
+      }).join('');
+    }
+  }
+
+  function findEntry(id) {
+    for (var i = 0; i < draft.length; i++) if (draft[i].id === id) return draft[i];
+    return null;
+  }
+
+  var mergeBtn = $('#pending-merge');
+  if (mergeBtn) mergeBtn.addEventListener('click', function () {
+    var links = window.MCLinks ? window.MCLinks.all() : {};
+    var posters = window.MCPoster ? window.MCPoster.all() : {};
+    var nL = 0, nP = 0, miss = 0;
+
+    Object.keys(links).forEach(function (id) {
+      var hit = findEntry(id);
+      if (!hit) { miss++; return; }
+      hit.resource = links[id].resource;
+      if (links[id].resourceNote) hit.resourceNote = links[id].resourceNote;
+      nL++;
+    });
+    Object.keys(posters).forEach(function (id) {
+      var hit = findEntry(id);
+      if (!hit) { miss++; return; }
+      hit.poster = posters[id];
+      nP++;
+    });
+
+    if (!nL && !nP) { toast('没有能对上的条目', true); return; }
+    persist();
+    if (nL && window.MCLinks) window.MCLinks.clear();
+    if (nP && window.MCPoster) window.MCPoster.clear();
+    renderList();
+    renderPending();
+    LOG.info('并入本地内容', '链接 ' + nL + ' 条,海报 ' + nP + ' 张' + (miss ? ',' + miss + ' 项对不上条目' : ''));
+    var parts = [];
+    if (nL) parts.push('链接 ' + nL + ' 条');
+    if (nP) parts.push('海报 ' + nP + ' 张');
+    toast('并入 ' + parts.join('、') + (miss ? '(' + miss + ' 项对不上)' : '') + ' —— 记得导出 data.js');
+  });
+
+  var dropBtn = $('#pending-drop');
+  if (dropBtn) dropBtn.addEventListener('click', function () {
+    if (!confirm('丢掉这些还没写进 data.js 的链接和海报?')) return;
+    if (window.MCLinks) window.MCLinks.clear();
+    if (window.MCPoster) window.MCPoster.clear();
+    renderPending();
+    toast('已丢弃');
+  });
+
   /* ---------------------------------------------------------- 运行日志 */
   var logOnlyErr = false;
 
@@ -604,6 +686,7 @@
   /* ------------------------------------------------------------ 启动 */
   clearForm();
   renderList();
+  renderPending();
   renderLog();
 
   if (!SOURCE_OK) {

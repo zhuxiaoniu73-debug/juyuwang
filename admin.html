@@ -139,6 +139,41 @@
     font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.6;
   }
 
+  .pending-sub {
+    margin: 14px 0 6px; font-size: 12.5px; color: var(--text-dim); letter-spacing: .04em;
+  }
+  .pending-sub b { color: var(--gold); font-variant-numeric: tabular-nums; }
+  #pending-links { list-style: none; margin: 0; padding: 0; }
+  #pending-links li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px;
+  }
+  #pending-links li:last-child { border-bottom: 0; }
+  .plink-name { flex-shrink: 0; max-width: 32%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plink-url {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--text-faint);
+  }
+  .plink-code {
+    flex-shrink: 0; padding: 1px 7px; border-radius: 5px;
+    background: rgba(240,180,74,.14); color: var(--gold); font-size: 11px;
+  }
+
+  /* 待并入的海报 */
+  #pending-posters .hint b { color: var(--gold); }
+  #pending-list { list-style: none; margin: 0 0 4px; padding: 0; max-height: 34vh; overflow-y: auto; }
+  .pending-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 7px 10px; border-bottom: 1px solid var(--line-soft);
+  }
+  .pending-item:last-child { border-bottom: 0; }
+  .pending-thumb {
+    width: 32px; height: 48px; border-radius: 5px; flex-shrink: 0;
+    background: var(--surface-2) center/cover no-repeat;
+  }
+  .pending-name { font-size: 14px; min-width: 0; }
+  .pending-name em { color: var(--text-faint); font-style: normal; font-size: 12px; margin-inline-start: 6px; }
+
   /* 运行日志 */
   #log-list { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow-y: auto; }
   .log-item {
@@ -358,6 +393,27 @@
       <textarea id="export-text" hidden readonly></textarea>
     </div>
 
+    <div class="panel" id="pending-posters" style="margin-top: 20px" hidden>
+      <h2>待并入的内容</h2>
+      <p class="hint">你在站上直接填的链接、拖上去的海报,现在只存在浏览器里。
+        点「并入草稿」写进条目,再导出 data.js 才算真正存下来。</p>
+
+      <div id="pending-links-box" hidden>
+        <div class="pending-sub">网盘链接 · <b id="pending-link-count">0</b> 条</div>
+        <ul id="pending-links"></ul>
+      </div>
+
+      <div id="pending-posters-box" hidden>
+        <div class="pending-sub">海报 · <b id="pending-count">0</b> 张,约 <b id="pending-size">0</b> KB</div>
+        <ul id="pending-list"></ul>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="pending-merge">并入草稿</button>
+        <button type="button" class="btn btn-ghost" id="pending-drop">丢弃</button>
+      </div>
+    </div>
+
     <div class="panel" id="log" style="margin-top: 20px">
       <h2>运行日志</h2>
       <p class="hint">页面出错、存盘失败、批量粘贴的结果都会记在这儿。
@@ -379,9 +435,11 @@
 
 <!-- 日志要最先加载,才能抓到后面脚本自己的报错 -->
 <script src="assets/js/log.js"></script>
+<script src="assets/js/poster.js"></script>
 <script src="assets/js/site.js"></script>
 <script src="assets/js/data.js"></script>
 <script src="assets/js/app.js"></script>
+<script src="assets/js/panels.js"></script>
 <script src="assets/js/admin.js"></script>
 </body>
 </html>

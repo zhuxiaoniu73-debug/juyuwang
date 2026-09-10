@@ -57,6 +57,8 @@ def build(bare=False):
     data_js = read('assets', 'js', 'data.js')
 
     log_js = read('assets', 'js', 'log.js')
+    poster_js = read('assets', 'js', 'poster.js')
+    panels_js = read('assets', 'js', 'panels.js')
     site_js = read('assets', 'js', 'site.js')
     app = read('assets', 'js', 'app.js')
     app = app.replace('detail.html?id=', '#/detail?id=')
@@ -189,8 +191,15 @@ def build(bare=False):
 <script>
 %s
 </script>
-''' % (css, header, footer, tabbar, inline_js(log_js),
-       inline_js(site_js), inline_js(data_js), inline_js(tpl_js), inline_js(app))
+<script>
+%s
+</script>
+<script>
+%s
+</script>
+''' % (css, header, footer, tabbar, inline_js(log_js), inline_js(poster_js),
+       inline_js(site_js), inline_js(data_js), inline_js(tpl_js),
+       inline_js(panels_js), inline_js(app))
 
     return body if bare else (head + body + u'</body>\n</html>\n')
 
