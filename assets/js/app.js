@@ -622,7 +622,14 @@
       '<span class="dot">·</span><span>' + esc(item.region) + '</span>'
     ].join('');
 
+    // 入列编号:按入列先后排的第几部,是真实顺序,不是编出来的
+    var order = DB.slice().sort(function (a, b) {
+      return a.added < b.added ? -1 : a.added > b.added ? 1 : a.title.localeCompare(b.title, 'zh-Hans-CN');
+    }).map(function (x) { return x.id; }).indexOf(item.id) + 1;
+    var hull = 'NO.' + (order < 100 ? ('00' + order).slice(-3) : order);
+
     var info =
+      '<div class="info-item"><dt>编号</dt><dd class="hull-no">' + hull + '</dd></div>' +
       '<div class="info-item"><dt>年份</dt><dd>' + esc(item.year) + '</dd></div>' +
       '<div class="info-item"><dt>类型</dt><dd><div class="chips">' +
         '<a class="tag" href="list.html?category=' + encodeURIComponent(item.category) + '">' + esc(item.category) + '</a>' +
@@ -633,7 +640,7 @@
       '<div class="info-item"><dt>地区</dt><dd><a class="tag" href="list.html?region=' +
         encodeURIComponent(item.region) + '">' + esc(item.region) + '</a></dd></div>' +
       (item.director ? '<div class="info-item"><dt>导演</dt><dd>' + esc(item.director) + '</dd></div>' : '') +
-      '<div class="info-item"><dt>收录</dt><dd>' + esc(item.added) + '</dd></div>';
+      '<div class="info-item"><dt>入列</dt><dd>' + esc(item.added) + '</dd></div>';
 
     var actors = (item.actors || []).map(function (a) {
       var ah = hueOf(a);
