@@ -57,10 +57,9 @@
   };
 
   /* ---------------------------------------------------- 解析网盘分享 */
-  /* 从网盘复制出来通常是一整段,比如:
-       通过网盘分享的文件:亮剑
-       链接: https://pan.baidu.com/s/1AbCd-efG 提取码: 8k2p
-     这里把地址和提取码都抠出来,不用你手动拆。 */
+  /* 从网盘点「复制链接」得到的通常是一整段:
+     开头一行说明,中间一个网址,后面跟着提取码。
+     这里把地址和提取码都抠出来,不用手动拆。 */
   function parseShare(text) {
     text = String(text || '').trim();
     if (!text) return null;
@@ -181,14 +180,14 @@
       (current
         ? '<div class="mc-field">' +
             '<label for="mc-one">粘贴 ——「' + esc(current.title) + '」的网盘分享</label>' +
-            '<textarea id="mc-one" rows="3" placeholder="整段粘进来就行,比如:&#10;链接: https://pan.baidu.com/s/1AbCdEf 提取码: 8k2p"></textarea>' +
+            '<textarea id="mc-one" rows="3" placeholder="从网盘点「复制链接」得到的那一整段,连提取码一起粘进来就行"></textarea>' +
             '<div class="mc-parsed" id="mc-parsed"></div>' +
             '<div class="mc-row"><button type="button" class="btn btn-primary" id="mc-save-one">存给这部片</button></div>' +
           '</div><div class="mc-sep">或者批量填</div>'
         : '') +
       '<div class="mc-field">' +
         '<label for="mc-bulk">一行一部:<code>片名 | 链接 | 提取码</code></label>' +
-        '<textarea id="mc-bulk" rows="5" placeholder="亮剑 | https://pan.baidu.com/s/1AbCdEf | 8k2p&#10;潜伏 | pan.quark.cn/s/xyz"></textarea>' +
+        '<textarea id="mc-bulk" rows="5" placeholder="片名 | 网盘地址 | 提取码&#10;片名 | 网盘地址"></textarea>' +
         '<div class="mc-row"><button type="button" class="btn btn-primary" id="mc-save-bulk">批量存</button></div>' +
       '</div>' +
       '<div class="mc-pending" id="mc-pending"></div>';

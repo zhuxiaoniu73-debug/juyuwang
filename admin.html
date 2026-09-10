@@ -269,7 +269,7 @@
 
     <div class="field">
       <label for="f-title">片名 *</label>
-      <input type="text" id="f-title" required placeholder="亮剑">
+      <input type="text" id="f-title" required placeholder="片名">
     </div>
 
     <div class="field-row">
@@ -306,17 +306,17 @@
 
     <div class="field">
       <label for="f-director">导演</label>
-      <input type="text" id="f-director" placeholder="陈健 / 张前">
+      <input type="text" id="f-director" placeholder="导演名字">
     </div>
 
     <div class="field">
       <label for="f-actors">演员(顿号或逗号分隔)</label>
-      <input type="text" id="f-actors" placeholder="李幼斌、何政军、张光北">
+      <input type="text" id="f-actors" placeholder="演员一、演员二、演员三">
     </div>
 
     <div class="field">
       <label for="f-desc">简介</label>
-      <textarea id="f-desc" placeholder="从豆瓣、维基复制一段贴进来就行"></textarea>
+      <textarea id="f-desc" placeholder="一段简介"></textarea>
     </div>
 
     <div class="field">
@@ -337,12 +337,12 @@
 
     <div class="field">
       <label for="f-res">资源入口链接</label>
-      <input type="text" inputmode="url" id="f-res" placeholder="pan.quark.cn/s/… (不写 https:// 也行)">
+      <input type="text" inputmode="url" id="f-res" placeholder="网盘地址(不写 https:// 也行)">
     </div>
 
     <div class="field">
       <label for="f-note">提取码 / 说明</label>
-      <input type="text" id="f-note" placeholder="提取码 8k2p,夸克网盘">
+      <input type="text" id="f-note" placeholder="提取码,或其它说明">
     </div>
 
     <div class="field">
@@ -368,15 +368,15 @@
       <p class="hint">一行一部。<b>片名对得上已有条目就只补链接</b>,对不上才新建 —— 所以想一次性把网盘链接填进来,用第一种写法最快。</p>
 
       <div class="fmt">
-        只补链接:<code>亮剑 | https://pan.quark.cn/s/abc123</code><br>
-        带提取码:<code>亮剑 | https://pan.quark.cn/s/abc123 | 提取码 8k2p</code><br>
+        只补链接:<code>片名 | 网盘地址</code><br>
+        带提取码:<code>片名 | 网盘地址 | 提取码</code><br>
         新增条目:<code>片名 | 分类 | 年份 | 地区 | 类型 | 链接 | 提取码</code><br>
         分隔符 <code>|</code> 前后有没有空格都行,中文竖线和 Tab 也认。
       </div>
 
-      <textarea id="bulk-text" placeholder="亮剑 | https://pan.quark.cn/s/abc123 | 提取码 8k2p
-潜伏 | https://pan.baidu.com/s/xyz
-繁花 | 电视剧 | 2023 | 中国 | 都市/年代 | https://pan.quark.cn/s/def456"></textarea>
+      <textarea id="bulk-text" placeholder="片名 | 网盘地址 | 提取码
+片名 | 网盘地址
+片名 | 分类 | 年份 | 地区 | 类型 | 网盘地址 | 提取码"></textarea>
       <div class="form-actions">
         <button type="button" class="btn btn-primary" id="bulk-run">解析并写入</button>
       </div>
