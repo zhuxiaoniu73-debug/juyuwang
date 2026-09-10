@@ -217,6 +217,21 @@
     });
   }
 
+  /** 把 site.js 里的名字和文案填进页面 */
+  function applySite() {
+    var S = window.SITE || {};
+    $$('[data-site]').forEach(function (n) {
+      var v = S[n.dataset.site];
+      if (v) n.textContent = v;
+    });
+    // 浏览器标签页标题(详情页会被影片名覆盖)
+    var page = document.body.dataset.page;
+    var suffix = S.full || S.short || '影视收藏馆';
+    if (page === 'home')  document.title = suffix;
+    if (page === 'list')  document.title = '片库 · ' + suffix;
+    if (page === 'admin') document.title = '录入台 · ' + suffix;
+  }
+
   /** 高亮当前页面的导航项 */
   function initNav() {
     var page = document.body.dataset.page;
@@ -574,7 +589,7 @@
 
     var root = $('#detail');
     if (!item) {
-      document.title = '未找到该影视 · 影视收藏馆';
+      document.title = '未找到该影视 · ' + ((window.SITE && window.SITE.full) || '影视收藏馆');
       root.innerHTML =
         '<div class="empty">' +
           '<div class="empty-icon">' + svg('empty') + '</div>' +
@@ -585,7 +600,7 @@
       return;
     }
 
-    document.title = item.title + ' · 影视收藏馆';
+    document.title = item.title + ' · ' + ((window.SITE && window.SITE.full) || '影视收藏馆');
     var cfg = catOf(item.category);
     var h = hueOf(item.title + item.category);
 
@@ -662,6 +677,7 @@
 
   /* ------------------------------------------------------------ 启动 */
   document.addEventListener('DOMContentLoaded', function () {
+    applySite();
     initHeader();
     initNav();
     var page = document.body.dataset.page;

@@ -55,6 +55,7 @@ def build(use_sample=False, bare=False):
     else:
         data_js = read('assets', 'js', 'data.js')
 
+    site_js = read('assets', 'js', 'site.js')
     app = read('assets', 'js', 'app.js')
     app = app.replace('detail.html?id=', '#/detail?id=')
     app = app.replace('list.html?', '#/list?')
@@ -75,6 +76,7 @@ def build(use_sample=False, bare=False):
 """'<p class="resource-note">这条还没填资源链接。</p>'""")
 
     old_boot = """  document.addEventListener('DOMContentLoaded', function () {
+    applySite();
     initHeader();
     initNav();
     var page = document.body.dataset.page;
@@ -102,6 +104,7 @@ def build(use_sample=False, bare=False):
     var wantCat = parseHash();
     document.body.dataset.page = ROUTE.page;
     document.getElementById('view').innerHTML = window.__TPL[ROUTE.page];
+    applySite();
     initNav();
     if (ROUTE.page === 'home')   initHome();
     if (ROUTE.page === 'list')   initList();
@@ -116,6 +119,7 @@ def build(use_sample=False, bare=False):
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    applySite();
     initHeader();
     render();
     window.addEventListener('hashchange', render);
@@ -182,7 +186,10 @@ def build(use_sample=False, bare=False):
 <script>
 %s
 </script>
-''' % (css, note, header, footer, tabbar, data_js, tpl_js, app)
+<script>
+%s
+</script>
+''' % (css, note, header, footer, tabbar, site_js, data_js, tpl_js, app)
 
     return body if bare else (head + body + u'</body>\n</html>\n')
 

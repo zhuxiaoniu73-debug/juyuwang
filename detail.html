@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07070a">
 <meta name="description" content="影视详情:年份、类型、地区、演员、简介与资源入口。">
-<title>影视详情 · 影视收藏馆</title>
+<title>影视详情 · 乌海舰的影视收藏馆</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e5322d'/%3E%3Cpath d='M8 9h16v14H8z' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M12 9v14M20 9v14M8 16h16' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -18,7 +18,8 @@
         <path d="M3 4h18v16H3z"/><path d="M7 4v16M17 4v16M3 10h18M3 14h18"/>
       </svg>
     </span>
-    <span class="logo-text">影视收藏馆</span>
+    <span class="logo-text" data-site="short">影视收藏馆</span>
+    <span class="logo-owner" data-site="owner">乌海舰</span>
   </a>
 
   <nav class="main-nav">
@@ -70,8 +71,9 @@
 </main>
 
 <footer class="site-footer">
-  <span class="logo"><span class="logo-text">影视收藏馆</span></span>
-  <span>个人影视资料库 · 仅作信息整理与收藏展示,不提供在线播放</span>
+  <span class="logo"><span class="logo-text" data-site="short">影视收藏馆</span></span>
+  <span class="footer-sign">馆主 · <b data-site="owner">乌海舰</b></span>
+  <span data-site="footerNote">个人影视资料库 · 仅作整理与收藏展示,不提供在线播放</span>
   <nav>
     <a href="index.html">首页</a>
     <a href="list.html">片库</a>
@@ -99,6 +101,7 @@
   </a>
 </nav>
 
+<script src="assets/js/site.js"></script>
 <script src="assets/js/data.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
