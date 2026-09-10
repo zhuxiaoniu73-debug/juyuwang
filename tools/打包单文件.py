@@ -65,9 +65,10 @@ def build(bare=False):
                   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
                   'stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>打开录入台</a>';""",
 """  var ADMIN_BTN = '<a class="btn btn-primary" href="#/list">去片库看看</a>';""")
+    # 单文件版里点不开录入台,把提到它的那句换掉
     app = app.replace(
-"""'<p class="resource-note">用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。</p>'""",
-"""'<p class="resource-note">这条还没填资源链接。</p>'""")
+        "'用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。'",
+        "'这条还没填资源链接。'")
 
     old_boot = """  document.addEventListener('DOMContentLoaded', function () {
     applySite();

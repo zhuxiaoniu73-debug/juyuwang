@@ -57,6 +57,24 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  /** 只放行正常的链接协议。
+   *  javascript: / data:text/html 这类一律当没填 —— 从别处粘链接时可能带进来。
+   *  顺带:没写协议的裸域名(pan.quark.cn/s/xxx)自动补 https:// */
+  function safeUrl(u) {
+    u = String(u == null ? '' : u).trim();
+    if (!u) return '';
+    if (/^(https?:|magnet:|ed2k:|thunder:|ftp:|\/|\.\/|\.\.\/|#)/i.test(u)) return u;
+    if (/^[\w.-]+\.[a-z]{2,}([\/?#]|$)/i.test(u)) return 'https://' + u;
+    return '';
+  }
+
+  /** 图片地址:除了正常协议,再放行 data:image */
+  function safeImg(u) {
+    u = String(u == null ? '' : u).trim();
+    if (/^data:image\//i.test(u)) return u;
+    return safeUrl(u);
+  }
+
   /* ------------------------------------------------------------ 海报 */
   /* 没有 poster 图源时,按片名算一个稳定的色相,生成一张配色海报。
      同一部片子在任何页面、任何时候颜色都一样。 */
@@ -69,8 +87,9 @@
   /* withName:海报上要不要压片名。
      卡片下面本来就有片名,再压一遍显得啰嗦;详情页和首页头图的大海报则需要。 */
   function posterInner(item, withName) {
-    if (item.poster) {
-      return '<img src="' + esc(item.poster) + '" alt="' + esc(item.title) + ' 海报" loading="lazy">';
+    var img = safeImg(item.poster);
+    if (img) {
+      return '<img src="' + esc(img) + '" alt="' + esc(item.title) + ' 海报" loading="lazy">';
     }
     var h = hueOf(item.title + item.category);
     var h2 = (h + 42) % 360;
@@ -742,6 +761,8 @@
       (item.director ? '<div class="info-item"><dt>导演</dt><dd>' + esc(item.director) + '</dd></div>' : '') +
       '<div class="info-item"><dt>接入</dt><dd>' + esc(item.added) + '</dd></div>';
 
+    var resUrl = safeUrl(item.resource);
+
     var actors = (item.actors || []).map(function (a) {
       var ah = hueOf(a);
       return '<span class="actor"><span class="actor-avatar" style="background:hsl(' + ah + ',52%,62%)">' +
@@ -755,17 +776,19 @@
       (actors ? '<div class="detail-block"><h2>演员</h2><div class="actor-list">' + actors + '</div></div>' : '') +
       '<div class="detail-block"><h2>简介</h2><p class="detail-desc">' + esc(item.description) + '</p></div>' +
       '<div class="detail-actions">' +
-        (item.resource
-          ? '<a class="btn btn-primary" href="' + esc(item.resource) + '" target="_blank" rel="noopener">' +
+        (resUrl
+          ? '<a class="btn btn-primary" href="' + esc(resUrl) + '" target="_blank" rel="noopener">' +
               svg('play') + '资源入口</a>'
           : '<span class="btn" aria-disabled="true">' + svg('link') + '暂无资源链接</span>') +
         '<a class="btn btn-ghost" href="list.html?category=' + encodeURIComponent(item.category) + '">' +
           svg('grid') + '更多' + esc(item.category) + '</a>' +
-        (item.resource
+        (resUrl
           ? (item.resourceNote
               ? '<p class="resource-note">' + esc(item.resourceNote) + '</p>'
               : '')
-          : '<p class="resource-note">用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。</p>') +
+          : '<p class="resource-note">' + (item.resource
+              ? '这条的资源链接不是有效地址,录入台里改一下。'
+              : '用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。') + '</p>') +
       '</div>';
 
     // 相关推荐:同分类下类型标签重合最多的
@@ -796,5 +819,5 @@
   });
 
   // 供页面内联脚本 / 调试使用
-  window.MC = { CATEGORIES: CATEGORIES, search: search, cardEl: cardEl, svg: svg };
+  window.MC = { CATEGORIES: CATEGORIES, search: search, cardEl: cardEl, svg: svg, safeUrl: safeUrl };
 })();

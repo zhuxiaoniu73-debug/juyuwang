@@ -242,7 +242,7 @@
             选图片 / 拖进来 / Ctrl+V
             <input type="file" id="f-poster-file" accept="image/*">
           </label>
-          <input type="url" id="f-poster-url" placeholder="或粘贴图片地址 https://…">
+          <input type="text" inputmode="url" id="f-poster-url" placeholder="或粘贴图片地址">
           <span id="poster-hint"></span>
           <button type="button" class="file-btn" id="poster-clear" hidden>清除海报</button>
         </div>
@@ -251,7 +251,7 @@
 
     <div class="field">
       <label for="f-res">资源入口链接</label>
-      <input type="url" id="f-res" placeholder="https://pan.quark.cn/s/…">
+      <input type="text" inputmode="url" id="f-res" placeholder="pan.quark.cn/s/… (不写 https:// 也行)">
     </div>
 
     <div class="field">

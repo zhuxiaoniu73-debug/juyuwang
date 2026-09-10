@@ -219,6 +219,12 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  /** 补全裸域名(pan.quark.cn/s/x → https://pan.quark.cn/s/x),并挡掉 javascript: 之类 */
+  function tidyUrl(v) {
+    if (window.MC && window.MC.safeUrl) return window.MC.safeUrl(v);
+    return String(v == null ? '' : v).trim();
+  }
+
   function splitList(s) {
     return String(s).split(/[、,,\/\|\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
   }
@@ -238,7 +244,7 @@
       region: f.region.value.trim() || '中国',
       actors: splitList(f.actors.value),
       description: f.desc.value.trim(),
-      resource: f.res.value.trim(),
+      resource: tidyUrl(f.res.value),
       added: f.added.value || today(),
       hot: f.hot.checked
     };
@@ -272,7 +278,12 @@
   });
 
   /* ------------------------------------------------------- 批量粘贴 */
-  function isUrl(s) { return /^(https?:\/\/|magnet:|ed2k:|\/\/)/i.test(String(s).trim()); }
+  function isUrl(s) {
+    s = String(s).trim();
+    // 带协议的,或者看着就是个域名的(pan.quark.cn/s/xxx),都算链接
+    return /^(https?:\/\/|magnet:|ed2k:|thunder:|ftp:|\/\/)/i.test(s) ||
+           /^[\w.-]+\.[a-z]{2,}[\/?#]/i.test(s);
+  }
 
   $('#bulk-run').addEventListener('click', function () {
     var lines = $('#bulk-text').value.split('\n')
@@ -289,14 +300,14 @@
       if (cols.length <= 3 && isUrl(cols[1])) {
         var hit = findByTitle(title);
         if (hit) {
-          hit.resource = cols[1];
+          hit.resource = tidyUrl(cols[1]);
           if (cols[2]) hit.resourceNote = cols[2];
           updated++;
         } else {
           draft.unshift({
             id: makeId(title), title: title, category: CATEGORIES[0].name, genres: [],
             year: new Date().getFullYear(), region: '中国', actors: [], description: '',
-            resource: cols[1], resourceNote: cols[2] || '', added: today(), hot: false
+            resource: tidyUrl(cols[1]), resourceNote: cols[2] || '', added: today(), hot: false
           });
           added++;
         }
@@ -313,7 +324,7 @@
           year: isNaN(y) ? new Date().getFullYear() : y,
           region: cols[3] || '中国',
           actors: [], description: '',
-          resource: cols[5] || '', added: today(), hot: false
+          resource: tidyUrl(cols[5] || ''), added: today(), hot: false
         };
         if (cols[6]) obj.resourceNote = cols[6];
         var exist = findByTitle(title);
