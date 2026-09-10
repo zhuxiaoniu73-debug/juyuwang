@@ -621,6 +621,12 @@ button, input, select { font: inherit; color: inherit; }
 /* 一部片子都没有时,头图不必占满一屏 */
 .hero.is-bare { min-height: auto; padding-block: clamp(40px, 7vw, 76px); }
 
+/* 手机屏幕本来就窄,头图再占大半屏,海报就全被推到折叠线以下了 */
+@media (max-width: 640px) {
+  .hero { min-height: auto; padding-block: 26px 34px; }
+  .hero h1 { font-size: clamp(28px, 8vw, 40px); }
+}
+
 .hero-bg { position: absolute; inset: 0; z-index: 0; }
 .hero-bg::before {
   content: '';
