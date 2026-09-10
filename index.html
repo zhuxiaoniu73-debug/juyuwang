@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07070a">
+<meta name="description" content="影视收藏馆 —— 个人影视资料库,整理、分类和展示电影、电视剧、综艺、纪录片。">
+<title>影视收藏馆 · 个人影视资料库</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e5322d'/%3E%3Cpath d='M8 9h16v14H8z' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M12 9v14M20 9v14M8 16h16' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body data-page="home">
+
+<header class="site-header">
+  <a class="logo" href="index.html">
+    <span class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 4h18v16H3z"/><path d="M7 4v16M17 4v16M3 10h18M3 14h18"/>
+      </svg>
+    </span>
+    <span class="logo-text">影视收藏馆</span>
+  </a>
+
+  <nav class="main-nav">
+    <a href="index.html" data-nav="home">首页</a>
+    <a href="list.html" data-nav="list">片库</a>
+    <a href="index.html#categories">分类</a>
+  </nav>
+
+  <div class="header-search">
+    <svg class="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+    </svg>
+    <label class="sr-only" for="q">搜索影视名称</label>
+    <input id="q" type="search" placeholder="搜索片名、演员、类型…" autocomplete="off">
+    <button type="button" class="clear-btn" aria-label="清空搜索">×</button>
+    <div class="suggest" role="listbox"></div>
+  </div>
+</header>
+
+<main>
+  <!-- ============================ 头图 ============================ -->
+  <section class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-art" id="hero-art" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <span class="hero-kicker">个人影视资料库</span>
+      <h1>把看过的好片<br><span class="accent">一部部收进馆里</span></h1>
+      <p>电影、电视剧、综艺、纪录片,按分类、年份、地区归档。不做在线播放,只做整理、检索和展示。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="list.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+          </svg>
+          浏览全部影视
+        </a>
+        <a class="btn btn-ghost" href="#categories">按分类找片</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><b data-stat="total">—</b><span>收录影视</span></div>
+        <div class="hero-stat"><b data-stat="cat">—</b><span>大 类</span></div>
+        <div class="hero-stat"><b data-stat="region">—</b><span>地 区</span></div>
+        <div class="hero-stat"><b data-stat="year">—</b><span>年 份</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================== 热门影视 ========================== -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-title"><span class="bar"></span>热门影视</h2>
+      <span class="section-sub">馆里被翻得最多的几部</span>
+      <a class="section-more" href="list.html?sort=rating">全部 ›</a>
+    </div>
+    <div class="row-wrap">
+      <button class="row-nav prev" type="button" aria-label="向左滚动">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="row" id="row-hot"></div>
+      <button class="row-nav next" type="button" aria-label="向右滚动">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ========================== 最新添加 ========================== -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-title"><span class="bar"></span>最新添加</h2>
+      <span class="section-sub">按收录日期排</span>
+      <a class="section-more" href="list.html?sort=added">全部 ›</a>
+    </div>
+    <div class="row-wrap">
+      <button class="row-nav prev" type="button" aria-label="向左滚动">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="row" id="row-recent"></div>
+      <button class="row-nav next" type="button" aria-label="向右滚动">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ========================== 分类入口 ========================== -->
+  <section class="section" id="categories">
+    <div class="section-head">
+      <h2 class="section-title"><span class="bar"></span>分类浏览</h2>
+      <span class="section-sub">点大类进片库,点标签直接筛类型</span>
+    </div>
+    <div class="cat-grid" id="cat-grid"></div>
+  </section>
+
+  <!-- ========================== 高分推荐 ========================== -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-title"><span class="bar"></span>高分收藏</h2>
+      <span class="section-sub">评分靠前的片子</span>
+      <a class="section-more" href="list.html?sort=rating">全部 ›</a>
+    </div>
+    <div class="row-wrap">
+      <button class="row-nav prev" type="button" aria-label="向左滚动">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="row" id="row-top"></div>
+      <button class="row-nav next" type="button" aria-label="向右滚动">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span class="logo"><span class="logo-text">影视收藏馆</span></span>
+  <span>个人影视资料库 · 仅作信息整理与收藏展示,不提供在线播放</span>
+  <nav>
+    <a href="index.html">首页</a>
+    <a href="list.html">片库</a>
+    <a href="index.html#categories">分类</a>
+  </nav>
+</footer>
+
+<nav class="tab-bar" aria-label="底部导航">
+  <a href="index.html" data-nav="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
+    首页
+  </a>
+  <a href="list.html" data-nav="list">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    片库
+  </a>
+  <a href="index.html#categories">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+    分类
+  </a>
+  <a href="list.html#q">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    搜索
+  </a>
+</nav>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
