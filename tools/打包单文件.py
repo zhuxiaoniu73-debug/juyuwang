@@ -19,6 +19,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 read = lambda *p: io.open(os.path.join(ROOT, *p), encoding='utf-8').read()
 
 
+def inline_js(s):
+    """内联进 <script> 之前必须处理:HTML 解析器见到 </script 就结束脚本块,
+    简介里从网页复制来一段带 </script> 的文字,整个单文件版就废了。
+    在 JS 字符串里 <\/script 和 </script 等价,所以这样改不影响内容。"""
+    return s.replace('</script', '<\\/script').replace('<!--', '<!\\--')
+
+
 def js_str(s):
     """把一段 HTML 变成 JS 单引号字符串"""
     return "'" + (s.replace('\\', '\\\\').replace("'", "\\'")
@@ -169,7 +176,8 @@ def build(bare=False):
 <script>
 %s
 </script>
-''' % (css, header, footer, tabbar, site_js, data_js, tpl_js, app)
+''' % (css, header, footer, tabbar,
+       inline_js(site_js), inline_js(data_js), inline_js(tpl_js), inline_js(app))
 
     return body if bare else (head + body + u'</body>\n</html>\n')
 

@@ -5,7 +5,34 @@
 (function () {
   'use strict';
 
-  var DB = window.MEDIA_DB || [];
+  /* 手写 data.js 时漏个字段太常见了(少写 genres: [] 之类)。
+     这里统一补齐,免得一条写坏就把整个片库和详情页带崩。 */
+  function normalize(raw, i) {
+    var it = raw || {};
+    var list = function (v) { return Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []); };
+    var year = parseInt(it.year, 10);
+    var out = {
+      id:       String(it.id || it.title || ('item-' + (i + 1))),
+      title:    String(it.title || '未命名'),
+      poster:   it.poster || '',
+      category: String(it.category || '电影'),
+      genres:   list(it.genres),
+      year:     isNaN(year) ? 0 : year,
+      region:   String(it.region || '未填'),
+      actors:   list(it.actors),
+      description: String(it.description == null ? '' : it.description),
+      resource: String(it.resource || ''),
+      added:    String(it.added || ''),
+      hot:      !!it.hot
+    };
+    if (it.director) out.director = String(it.director);
+    if (it.resourceNote) out.resourceNote = String(it.resourceNote);
+    var r = parseFloat(it.rating);
+    if (!isNaN(r)) out.rating = r;
+    return out;
+  }
+
+  var DB = (window.MEDIA_DB || []).map(normalize);
 
   /* ---------------------------------------------------------- 分类配置 */
   var ICONS = {
@@ -111,7 +138,7 @@
       box.insertAdjacentHTML('beforeend',
         '<div class="poster-hover">' +
           '<div class="ph-title">' + esc(item.title) + '</div>' +
-          '<div class="ph-line"><span>' + esc(item.year) + '</span><span>' + esc(item.region) + '</span>' +
+          '<div class="ph-line"><span>' + esc(item.year || '—') + '</span><span>' + esc(item.region) + '</span>' +
             '<span>' + esc(item.genres.join(' / ')) + '</span></div>' +
           '<p class="ph-desc">' + esc(item.description) + '</p>' +
           '<span class="ph-cta">查看详情' + svg('right') + '</span>' +
@@ -129,7 +156,7 @@
     a.insertAdjacentHTML('beforeend',
       '<div class="card-body">' +
         '<div class="card-title">' + esc(item.title) + '</div>' +
-        '<div class="card-meta"><span>' + esc(item.year) + '</span><span class="dot">·</span>' +
+        '<div class="card-meta"><span>' + esc(item.year || '—') + '</span><span class="dot">·</span>' +
           '<span>' + esc(item.category) + '</span><span class="dot">·</span><span>' + esc(item.region) + '</span></div>' +
         '<div class="card-tags">' + item.genres.slice(0, 2).map(function (g) {
           return '<span class="tag">' + esc(g) + '</span>';
@@ -159,8 +186,12 @@
   }
 
   var SORTS = {
-    added:  function (a, b) { return (a.added < b.added ? 1 : a.added > b.added ? -1 : 0); },
-    year:   function (a, b) { return b.year - a.year; },
+    // 没填接入日期的排最后 —— 日期未知不等于最新
+    added:  function (a, b) {
+      if (!a.added !== !b.added) return a.added ? -1 : 1;
+      return (a.added < b.added ? 1 : a.added > b.added ? -1 : 0);
+    },
+    year:   function (a, b) { return (b.year || 0) - (a.year || 0); },
     rating: function (a, b) { return (b.rating || 0) - (a.rating || 0); },
     title:  function (a, b) { return a.title.localeCompare(b.title, 'zh-Hans-CN'); }
   };
@@ -259,8 +290,12 @@
     });
   }
 
+  var rowResizers = [];   // 同上:切页重跑时先把上一批监听撤掉
+
   /** 首页横向影片行的左右翻页 */
   function initRows() {
+    rowResizers.forEach(function (fn) { window.removeEventListener('resize', fn); });
+    rowResizers = [];
     $$('.row-wrap').forEach(function (wrap) {
       var row = $('.row', wrap);
       var prev = $('.row-nav.prev', wrap);
@@ -274,6 +309,7 @@
       next.addEventListener('click', function () { row.scrollBy({ left:  row.clientWidth * .85, behavior: 'smooth' }); });
       row.addEventListener('scroll', sync, { passive: true });
       window.addEventListener('resize', sync);
+      rowResizers.push(sync);
       sync();
     });
   }
@@ -302,13 +338,21 @@
                   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
                   'stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>打开录入台</a>';
 
+  /* 单文件版切页时会重新跑一遍 init,这两个句柄放在模块级,
+     保证同一时间只有一条动画循环、一个 resize 监听 —— 否则每回一次首页就多一条,
+     而且旧循环还在给已经从页面上摘掉的画布画图。 */
+  var netRaf = 0, netResize = null;
+
   /** 头图背景:一张会慢慢挪动的节点连线图,偶尔有个数据包沿线跑一下 */
   function initNetBackdrop() {
+    cancelAnimationFrame(netRaf);
+    if (netResize) { window.removeEventListener('resize', netResize); netResize = null; }
+
     var cv = document.getElementById('hero-net');
     if (!cv || !cv.getContext) return;
     var ctx = cv.getContext('2d');
     var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var nodes = [], links = [], packets = [], w = 0, h = 0, raf = 0;
+    var nodes = [], links = [], packets = [], w = 0, h = 0;
 
     function seed() {
       var box = cv.getBoundingClientRect();
@@ -376,6 +420,8 @@
     }
 
     function tick() {
+      // 画布已经不在页面上了(切页换掉了),自己停,别空转
+      if (!cv.isConnected) { cancelAnimationFrame(netRaf); return; }
       nodes.forEach(function (n) {
         n.x += n.vx; n.y += n.vy;
         if (n.x < 0 || n.x > w) n.vx *= -1;
@@ -386,18 +432,19 @@
         packets.push({ link: Math.floor(Math.random() * links.length), t: 0, speed: .004 + Math.random() * .006 });
       }
       draw();
-      raf = requestAnimationFrame(tick);
+      netRaf = requestAnimationFrame(tick);
     }
 
     function start() {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(netRaf);
       if (!seed()) return;
       if (still) draw(); else tick();
     }
 
     start();
     var t;
-    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(start, 200); });
+    netResize = function () { clearTimeout(t); t = setTimeout(start, 200); };
+    window.addEventListener('resize', netResize);
   }
 
   /* =========================================================== 首页 */
@@ -423,7 +470,7 @@
     var stats = { total: DB.length,
                   cat: new Set(DB.map(function (i) { return i.category; })).size,
                   region: new Set(DB.map(function (i) { return i.region; })).size,
-                  year: new Set(DB.map(function (i) { return i.year; })).size };
+                  year: new Set(DB.map(function (i) { return i.year; }).filter(Boolean)).size };
     $$('[data-stat]').forEach(function (n) { n.textContent = stats[n.dataset.stat]; });
 
     // 热门影视:标了 hot 的,按评分排
@@ -539,7 +586,7 @@
     });
 
     /* --- 年份:按年代分档,再加最近三年 --- */
-    var years = DB.map(function (i) { return i.year; });
+    var years = DB.map(function (i) { return i.year; }).filter(Boolean);
     var decades = Array.from(new Set(years.map(decadeOf))).sort(function (a, b) { return b - a; });
     var yearOpts = decades.map(function (d) { return { v: d + 's', label: d + ' 年代' }; });
 
@@ -736,20 +783,21 @@
 
     var facts = [
       item.rating ? '<span class="detail-score"><b>' + item.rating.toFixed(1) + '</b><span>/ 10</span></span>' : '',
-      '<span>' + esc(item.year) + '</span>',
+      '<span>' + esc(item.year || '—') + '</span>',
       '<span class="dot">·</span><span>' + esc(item.category) + '</span>',
       '<span class="dot">·</span><span>' + esc(item.region) + '</span>'
     ].join('');
 
     // 内网地址:按接入先后给一个 192.168.x.y,是真实顺序算出来的,不是编的
     var order = DB.slice().sort(function (a, b) {
+      if (!a.added !== !b.added) return a.added ? -1 : 1;   // 同上,没日期的排最后
       return a.added < b.added ? -1 : a.added > b.added ? 1 : a.title.localeCompare(b.title, 'zh-Hans-CN');
     }).map(function (x) { return x.id; }).indexOf(item.id) + 1;
     var ip = '192.168.' + (Math.floor((order - 1) / 254) + 1) + '.' + ((order - 1) % 254 + 1);
 
     var info =
       '<div class="info-item"><dt>地址</dt><dd class="hull-no">' + ip + '</dd></div>' +
-      '<div class="info-item"><dt>年份</dt><dd>' + esc(item.year) + '</dd></div>' +
+      '<div class="info-item"><dt>年份</dt><dd>' + esc(item.year || '未填') + '</dd></div>' +
       '<div class="info-item"><dt>类型</dt><dd><div class="chips">' +
         '<a class="tag" href="list.html?category=' + encodeURIComponent(item.category) + '">' + esc(item.category) + '</a>' +
         item.genres.map(function (g) {
@@ -759,7 +807,7 @@
       '<div class="info-item"><dt>地区</dt><dd><a class="tag" href="list.html?region=' +
         encodeURIComponent(item.region) + '">' + esc(item.region) + '</a></dd></div>' +
       (item.director ? '<div class="info-item"><dt>导演</dt><dd>' + esc(item.director) + '</dd></div>' : '') +
-      '<div class="info-item"><dt>接入</dt><dd>' + esc(item.added) + '</dd></div>';
+      '<div class="info-item"><dt>接入</dt><dd>' + esc(item.added || '未填') + '</dd></div>';
 
     var resUrl = safeUrl(item.resource);
 
