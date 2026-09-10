@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#07070a">
 <meta name="description" content="影视收藏馆 —— 个人影视资料库,整理、分类和展示电影、电视剧、综艺、纪录片。">
 <title>乌海局域网的影视收藏馆</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1b2c'/%3E%3Cg fill='none' stroke='%23dcb877' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='16' cy='7' r='2.2'/%3E%3Cpath d='M16 9.5v14'/%3E%3Cpath d='M11.5 13h9'/%3E%3Cpath d='M8 17.5c0 4.2 3.6 6.6 8 6.6s8-2.4 8-6.6'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1a18'/%3E%3Cg fill='none' stroke='%234ee79b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='16' cy='7.5' r='2.4'/%3E%3Ccircle cx='7.5' cy='24' r='2.4'/%3E%3Ccircle cx='16' cy='24' r='2.4'/%3E%3Ccircle cx='24.5' cy='24' r='2.4'/%3E%3Cpath d='M16 10v4'/%3E%3Cpath d='M7.5 21.6V18h17v3.6'/%3E%3Cpath d='M16 14v7.6'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body data-page="home">
@@ -14,10 +14,10 @@
 <header class="site-header">
   <a class="logo" href="index.html">
     <span class="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="4" r="2"/><path d="M12 6v15"/><path d="M8 9.5h8"/>
-        <path d="M4.5 14c0 4 3.4 6.6 7.5 6.6s7.5-2.6 7.5-6.6"/>
-        <path d="M4.5 14H7.6M19.5 14h-3.1"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="4" r="2"/><circle cx="4.5" cy="20" r="2"/>
+        <circle cx="12" cy="20" r="2"/><circle cx="19.5" cy="20" r="2"/>
+        <path d="M12 6v5"/><path d="M4.5 18v-3h15v3"/><path d="M12 11v7"/>
       </svg>
     </span>
     <span class="logo-text" data-site="short">影视收藏馆</span>
@@ -45,7 +45,7 @@
   <!-- ============================ 头图 ============================ -->
   <section class="hero">
     <div class="hero-bg" aria-hidden="true"></div>
-    <div class="hero-radar" aria-hidden="true"></div>
+    <canvas class="hero-net" id="hero-net" aria-hidden="true"></canvas>
     <div class="hero-art" id="hero-art" aria-hidden="true"></div>
     <div class="hero-inner">
       <span class="hero-kicker" data-site="kicker">乌海局域网的私人片库</span>
@@ -62,7 +62,7 @@
         <a class="btn btn-ghost" href="#categories">按分类找片</a>
       </div>
       <div class="hero-stats">
-        <div class="hero-stat"><b data-stat="total">—</b><span>入列影视</span></div>
+        <div class="hero-stat"><b data-stat="total">—</b><span>在线影视</span></div>
         <div class="hero-stat"><b data-stat="cat">—</b><span>大 类</span></div>
         <div class="hero-stat"><b data-stat="region">—</b><span>地 区</span></div>
         <div class="hero-stat"><b data-stat="year">—</b><span>年 份</span></div>
@@ -91,8 +91,8 @@
   <!-- ========================== 最新添加 ========================== -->
   <section class="section" id="sec-recent">
     <div class="section-head">
-      <h2 class="section-title"><span class="bar"></span>新近入列</h2>
-      <span class="section-sub">按入列日期排</span>
+      <h2 class="section-title"><span class="bar"></span>新近接入</h2>
+      <span class="section-sub">按接入日期排</span>
       <a class="section-more" href="list.html?sort=added">全部 ›</a>
     </div>
     <div class="row-wrap">

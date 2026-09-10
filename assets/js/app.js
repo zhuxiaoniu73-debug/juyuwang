@@ -283,6 +283,104 @@
                   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
                   'stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>打开录入台</a>';
 
+  /** 头图背景:一张会慢慢挪动的节点连线图,偶尔有个数据包沿线跑一下 */
+  function initNetBackdrop() {
+    var cv = document.getElementById('hero-net');
+    if (!cv || !cv.getContext) return;
+    var ctx = cv.getContext('2d');
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var nodes = [], links = [], packets = [], w = 0, h = 0, raf = 0;
+
+    function seed() {
+      var box = cv.getBoundingClientRect();
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = box.width; h = box.height;
+      if (!w || !h) return false;
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      var count = w < 640 ? 12 : 22;
+      nodes = [];
+      for (var i = 0; i < count; i++) {
+        nodes.push({
+          x: Math.random() * w, y: Math.random() * h,
+          vx: (Math.random() - .5) * .16, vy: (Math.random() - .5) * .16,
+          r: Math.random() < .22 ? 3.2 : 1.8      // 少数几个是「交换机」,大一点
+        });
+      }
+      var reach = Math.min(w, h) * (w < 640 ? .42 : .3);
+      links = [];
+      for (var a = 0; a < nodes.length; a++) {
+        for (var b = a + 1; b < nodes.length; b++) {
+          var dx = nodes[a].x - nodes[b].x, dy = nodes[a].y - nodes[b].y;
+          if (Math.sqrt(dx * dx + dy * dy) < reach) links.push([a, b]);
+        }
+      }
+      packets = [];
+      return true;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+
+      links.forEach(function (l) {
+        var p = nodes[l[0]], q = nodes[l[1]];
+        var dx = p.x - q.x, dy = p.y - q.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        var reach = Math.min(w, h) * (w < 640 ? .42 : .3);
+        ctx.strokeStyle = 'rgba(41, 201, 126, ' + (0.16 * (1 - d / reach)).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(q.x, q.y);
+        ctx.stroke();
+      });
+
+      nodes.forEach(function (n) {
+        ctx.fillStyle = n.r > 2.5 ? 'rgba(78, 231, 155, .5)' : 'rgba(41, 201, 126, .3)';
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      packets.forEach(function (pk) {
+        var l = links[pk.link];
+        if (!l) return;
+        var p = nodes[l[0]], q = nodes[l[1]];
+        var x = p.x + (q.x - p.x) * pk.t, y = p.y + (q.y - p.y) * pk.t;
+        ctx.fillStyle = 'rgba(240, 180, 74, .85)';
+        ctx.beginPath();
+        ctx.arc(x, y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function tick() {
+      nodes.forEach(function (n) {
+        n.x += n.vx; n.y += n.vy;
+        if (n.x < 0 || n.x > w) n.vx *= -1;
+        if (n.y < 0 || n.y > h) n.vy *= -1;
+      });
+      packets = packets.filter(function (pk) { return (pk.t += pk.speed) < 1; });
+      if (links.length && packets.length < 3 && Math.random() < .012) {
+        packets.push({ link: Math.floor(Math.random() * links.length), t: 0, speed: .004 + Math.random() * .006 });
+      }
+      draw();
+      raf = requestAnimationFrame(tick);
+    }
+
+    function start() {
+      cancelAnimationFrame(raf);
+      if (!seed()) return;
+      if (still) draw(); else tick();
+    }
+
+    start();
+    var t;
+    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(start, 200); });
+  }
+
   /* =========================================================== 首页 */
   function initHome() {
     // 一部都没有:收起首页的各个区块,只留头图和一句「从这里开始」
@@ -320,6 +418,8 @@
     // 高分推荐:没填评分的不进这一区
     var top = DB.filter(function (i) { return i.rating; }).sort(SORTS.rating).slice(0, 14);
     fillRow($('#row-top'), top, '#sec-top');
+
+    initNetBackdrop();
 
     // 头图右侧的装饰海报:取评分最高的三部
     var art = $('#hero-art');
@@ -622,14 +722,14 @@
       '<span class="dot">·</span><span>' + esc(item.region) + '</span>'
     ].join('');
 
-    // 入列编号:按入列先后排的第几部,是真实顺序,不是编出来的
+    // 内网地址:按接入先后给一个 192.168.x.y,是真实顺序算出来的,不是编的
     var order = DB.slice().sort(function (a, b) {
       return a.added < b.added ? -1 : a.added > b.added ? 1 : a.title.localeCompare(b.title, 'zh-Hans-CN');
     }).map(function (x) { return x.id; }).indexOf(item.id) + 1;
-    var hull = 'NO.' + (order < 100 ? ('00' + order).slice(-3) : order);
+    var ip = '192.168.' + (Math.floor((order - 1) / 254) + 1) + '.' + ((order - 1) % 254 + 1);
 
     var info =
-      '<div class="info-item"><dt>编号</dt><dd class="hull-no">' + hull + '</dd></div>' +
+      '<div class="info-item"><dt>地址</dt><dd class="hull-no">' + ip + '</dd></div>' +
       '<div class="info-item"><dt>年份</dt><dd>' + esc(item.year) + '</dd></div>' +
       '<div class="info-item"><dt>类型</dt><dd><div class="chips">' +
         '<a class="tag" href="list.html?category=' + encodeURIComponent(item.category) + '">' + esc(item.category) + '</a>' +
@@ -640,7 +740,7 @@
       '<div class="info-item"><dt>地区</dt><dd><a class="tag" href="list.html?region=' +
         encodeURIComponent(item.region) + '">' + esc(item.region) + '</a></dd></div>' +
       (item.director ? '<div class="info-item"><dt>导演</dt><dd>' + esc(item.director) + '</dd></div>' : '') +
-      '<div class="info-item"><dt>入列</dt><dd>' + esc(item.added) + '</dd></div>';
+      '<div class="info-item"><dt>接入</dt><dd>' + esc(item.added) + '</dd></div>';
 
     var actors = (item.actors || []).map(function (a) {
       var ah = hueOf(a);
