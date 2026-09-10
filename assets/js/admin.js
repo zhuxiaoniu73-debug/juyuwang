@@ -497,27 +497,6 @@
     if (!ta.hidden) { ta.value = serialize(); ta.select(); }
   });
 
-  var sampleBtn = $('#btn-sample');
-  if (sampleBtn) {
-    if (!window.MEDIA_SAMPLE) sampleBtn.hidden = true;
-    sampleBtn.addEventListener('click', function () {
-      if (!window.MEDIA_SAMPLE) return;
-      if (draft.length && !confirm('把 ' + window.MEDIA_SAMPLE.length +
-          ' 条示例加进来?(你已有的条目不会丢)')) return;
-      var have = {};
-      draft.forEach(function (i) { have[i.title] = true; });
-      var n = 0;
-      window.MEDIA_SAMPLE.forEach(function (i) {
-        if (have[i.title]) return;
-        draft.push(JSON.parse(JSON.stringify(i)));
-        n++;
-      });
-      persist();
-      renderList();
-      toast('载入了 ' + n + ' 条示例 —— 看完点「丢弃草稿」就能退回去');
-    });
-  }
-
   $('#btn-reset').addEventListener('click', function () {
     if (!confirm('丢掉浏览器里的草稿,回到 data.js 文件里的内容?')) return;
     draft = JSON.parse(JSON.stringify(BASE));

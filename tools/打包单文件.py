@@ -2,8 +2,7 @@
 """把整站打包成一个 HTML 文件,方便存手机里离线看,或者发给别人。
 
 用法(在项目根目录):
-    python3 tools/打包单文件.py              # 用你自己的数据 assets/js/data.js
-    python3 tools/打包单文件.py --sample     # 用 data/示例数据.js,做演示用
+    python3 tools/打包单文件.py              # 用 assets/js/data.js 里的数据
     python3 tools/打包单文件.py -o 我的片库.html
     python3 tools/打包单文件.py --bare        # 不带 <html>/<head> 外壳,给内嵌场景用
 
@@ -45,15 +44,10 @@ def hashify(s):
     return s
 
 
-def build(use_sample=False, bare=False):
+def build(bare=False):
     css = read('assets', 'css', 'style.css')
 
-    if use_sample:
-        src = read('data', '示例数据.js')
-        data_js = src[src.index('window.MEDIA_SAMPLE'):].replace(
-            'window.MEDIA_SAMPLE', 'window.MEDIA_DB', 1)
-    else:
-        data_js = read('assets', 'js', 'data.js')
+    data_js = read('assets', 'js', 'data.js')
 
     site_js = read('assets', 'js', 'site.js')
     app = read('assets', 'js', 'app.js')
@@ -139,12 +133,6 @@ def build(use_sample=False, bare=False):
     tpl_js = 'window.__TPL = {\n' + ',\n'.join(
         '  %s: %s' % (k, js_str(v)) for k, v in tpl.items()) + '\n};'
 
-    note = ''
-    if use_sample:
-        note = ('<div class="demo-note"><b>在线预览</b>'
-                '<span>「影视收藏馆」的样子,里面是 52 条示例数据。'
-                '真实使用时馆里默认是空的 —— 你加一条,才出现一条。</span></div>\n')
-
     head = u'''<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -157,19 +145,10 @@ def build(use_sample=False, bare=False):
 %s
 
 /* ——— 单文件版补丁 ——— */
-.demo-note {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
-  padding: 10px var(--page-x);
-  background: rgba(240, 194, 106, .09);
-  border-bottom: 1px solid rgba(240, 194, 106, .2);
-  font-size: 12.5px; line-height: 1.65;
-}
-.demo-note b { color: var(--gold); font-weight: 600; letter-spacing: .04em; }
-.demo-note span { color: #a99a80; }
 .reveal { opacity: 1 !important; transform: none !important; }
 </style>
 
-%s%s
+%s
 
 <div id="view"></div>
 
@@ -189,21 +168,18 @@ def build(use_sample=False, bare=False):
 <script>
 %s
 </script>
-''' % (css, note, header, footer, tabbar, site_js, data_js, tpl_js, app)
+''' % (css, header, footer, tabbar, site_js, data_js, tpl_js, app)
 
     return body if bare else (head + body + u'</body>\n</html>\n')
 
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    use_sample = '--sample' in args
     bare = '--bare' in args
     out = '影视收藏馆-单文件版.html'
     if '-o' in args:
         out = args[args.index('-o') + 1]
-    html = build(use_sample, bare)
+    html = build(bare)
     path = out if os.path.isabs(out) else os.path.join(ROOT, out)
     io.open(path, 'w', encoding='utf-8').write(html)
-    print('已生成 %s (%.0f KB,%s)' % (
-        path, len(html.encode('utf-8')) / 1024.0,
-        '示例数据' if use_sample else '你自己的数据'))
+    print('已生成 %s (%.0f KB)' % (path, len(html.encode('utf-8')) / 1024.0))
