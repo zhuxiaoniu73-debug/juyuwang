@@ -7,6 +7,9 @@
   'use strict';
 
   var KEY = 'mc-admin-draft';
+  /* data.js 解析失败时 window.MEDIA_DB 是 undefined。这时候草稿会是空的,
+     一旦导出就会用空文件盖掉原数据 —— 必须先拦住。 */
+  var SOURCE_OK = Array.isArray(window.MEDIA_DB);
   var CATEGORIES = (window.MC && window.MC.CATEGORIES) || [];
   var BASE = window.MEDIA_DB || [];
 
@@ -35,6 +38,15 @@
   } catch (e) { draft = null; }
   // 注意只认「有没有存过草稿」,不能拿长度判断 —— 否则手动删空之后一刷新又被灌回来
   if (!Array.isArray(draft)) draft = JSON.parse(JSON.stringify(BASE));
+
+  /** 源文件坏了、而且手上没有草稿时,导出会造成数据丢失 —— 先问一句 */
+  function exportGuard() {
+    if (SOURCE_OK) return true;
+    return confirm('assets/js/data.js 没能正常读取(多半是写出了语法错误)。\n\n' +
+      '现在导出的内容不包含原文件里的片子,覆盖过去会把它们弄丢。\n' +
+      '建议先按 F12 看控制台报错、把 data.js 改对,再回来导出。\n\n' +
+      '仍要继续吗?');
+  }
 
   function persist() {
     try {
@@ -466,6 +478,7 @@
   }
 
   $('#btn-copy').addEventListener('click', function () {
+    if (!exportGuard()) return;
     var text = serialize();
     var done = function () { toast('已复制(' + sizeNote(text) + ')—— 覆盖 assets/js/data.js 即可'); };
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -488,6 +501,7 @@
   }
 
   $('#btn-download').addEventListener('click', function () {
+    if (!exportGuard()) return;
     var text = serialize();
     try {
       var blob = new Blob([text], { type: 'text/javascript;charset=utf-8' });
@@ -520,4 +534,13 @@
   /* ------------------------------------------------------------ 启动 */
   clearForm();
   renderList();
+
+  if (!SOURCE_OK) {
+    var warn = document.createElement('div');
+    warn.className = 'source-warn';
+    warn.innerHTML = '<b>读不到 assets/js/data.js</b>' +
+      '<span>多半是手动编辑时写出了语法错误。下面显示的条目不包含原文件里的内容,' +
+      '这时候导出会覆盖丢数据。按 F12 看控制台第一行红字,它会指出错在哪。</span>';
+    document.querySelector('.admin-wrap').before(warn);
+  }
 })();

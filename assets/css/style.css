@@ -417,6 +417,10 @@ button, input, select { font: inherit; color: inherit; }
   position: relative;
   min-width: 0;
   transition: transform .28s var(--ease);
+  /* 片子多了以后,屏幕外的卡片让浏览器跳过排版和绘制。
+     intrinsic-size 给个占位高度,免得滚动条乱跳 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 340px;
 }
 @media (hover: hover) {
   .card:hover { transform: translateY(-6px); z-index: 3; }

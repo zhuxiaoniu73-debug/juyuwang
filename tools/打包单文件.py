@@ -76,6 +76,10 @@ def build(bare=False):
     app = app.replace(
         "'用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。'",
         "'这条还没填资源链接。'")
+    # 数据出错提示里的录入台按钮,单文件版点不开,去掉
+    app = app.replace(
+        "'<a class=\"btn btn-ghost\" href=\"admin.html\">打开录入台</a>' +",
+        "'' +")
 
     old_boot = """  document.addEventListener('DOMContentLoaded', function () {
     applySite();

@@ -29,10 +29,18 @@
     if (it.resourceNote) out.resourceNote = String(it.resourceNote);
     var r = parseFloat(it.rating);
     if (!isNaN(r)) out.rating = r;
+    // 检索用的字符串预先拼好并转小写 —— 否则每敲一个字都要为每条数据重拼一遍
+    out._s = (out.title + ' ' + out.category + ' ' + out.genres.join(' ') + ' ' +
+              out.region + ' ' + out.actors.join(' ') + ' ' + (out.director || '') + ' ' +
+              out.year).toLowerCase();
     return out;
   }
 
-  var DB = (window.MEDIA_DB || []).map(normalize);
+  /* 区分「确实一条都没有」和「data.js 根本没读进来」。
+     后者多半是手改时写出了语法错误,这时候显示「馆里还是空的」会误导人 —— 
+     真实情况是数据还在文件里,只是解析失败了。 */
+  var DB_OK = Array.isArray(window.MEDIA_DB);
+  var DB = (DB_OK ? window.MEDIA_DB : []).map(normalize);
 
   /* ---------------------------------------------------------- 分类配置 */
   var ICONS = {
@@ -78,10 +86,22 @@
     if (html != null) n.innerHTML = html;
     return n;
   }
+  /* 转义走一遍正则就够,而且大多数片名简介根本不含特殊字符,先探一下直接返回。
+     600 张卡片时这里会被调用近万次,原来的五连 replace 是渲染耗时的大头之一。 */
+  /** 浮层里只显示三行,截断一下,别让整段简介都进 DOM */
+  function clip(s, n) {
+    s = String(s == null ? '' : s);
+    return s.length > n ? s.slice(0, n) + '…' : s;
+  }
+
+  var ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  var ESC_TEST = /[&<>"']/;
+  var ESC_ALL = /[&<>"']/g;
   function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    if (s == null) return '';
+    s = String(s);
+    if (!ESC_TEST.test(s)) return s;
+    return s.replace(ESC_ALL, function (c) { return ESC_MAP[c]; });
   }
 
   /** 只放行正常的链接协议。
@@ -130,30 +150,36 @@
            '</div>';
   }
 
-  function posterEl(item, opts) {
+  /* 卡片一律先拼成字符串、最后一次性塞进 DOM。
+     早先是逐张 createElement + insertAdjacentHTML,600 张要 1.3 秒,
+     而同样的 HTML 交给浏览器一次解析只要几十毫秒。 */
+  function posterHTML(item, opts) {
     opts = opts || {};
-    var box = el('div', 'poster', posterInner(item, opts.name));
-    if (item.rating) box.insertAdjacentHTML('beforeend', '<span class="poster-score">' + item.rating.toFixed(1) + '</span>');
-    if (opts.hover) {
-      box.insertAdjacentHTML('beforeend',
-        '<div class="poster-hover">' +
-          '<div class="ph-title">' + esc(item.title) + '</div>' +
-          '<div class="ph-line"><span>' + esc(item.year || '—') + '</span><span>' + esc(item.region) + '</span>' +
-            '<span>' + esc(item.genres.join(' / ')) + '</span></div>' +
-          '<p class="ph-desc">' + esc(item.description) + '</p>' +
-          '<span class="ph-cta">查看详情' + svg('right') + '</span>' +
-        '</div>');
-    }
-    return box;
+    return '<div class="poster">' + posterInner(item, opts.name) +
+      (item.rating ? '<span class="poster-score">' + item.rating.toFixed(1) + '</span>' : '') +
+      (opts.hover
+        ? '<div class="poster-hover">' +
+            '<div class="ph-title">' + esc(item.title) + '</div>' +
+            '<div class="ph-line"><span>' + esc(item.year || '—') + '</span><span>' + esc(item.region) + '</span>' +
+              '<span>' + esc(item.genres.join(' / ')) + '</span></div>' +
+            '<p class="ph-desc">' + esc(clip(item.description, 90)) + '</p>' +
+            '<span class="ph-cta">查看详情' + svg('right') + '</span>' +
+          '</div>'
+        : '') +
+      '</div>';
+  }
+
+  function posterEl(item, opts) {
+    var box = el('div');
+    box.innerHTML = posterHTML(item, opts);
+    return box.firstChild;
   }
 
   /** 一张影视卡片:海报 + 名称 + 年份 + 类型标签,点击进详情页 */
-  function cardEl(item) {
-    var a = el('a', 'card');
-    a.href = 'detail.html?id=' + encodeURIComponent(item.id);
-    a.setAttribute('aria-label', item.title + ' · ' + item.year + ' · ' + item.genres.join(' '));
-    a.appendChild(posterEl(item, { hover: true }));
-    a.insertAdjacentHTML('beforeend',
+  function cardHTML(item) {
+    return '<a class="card" href="detail.html?id=' + encodeURIComponent(item.id) + '"' +
+      ' aria-label="' + esc(item.title + ' · ' + (item.year || '年份未填') + ' · ' + item.genres.join(' ')) + '">' +
+      posterHTML(item, { hover: true }) +
       '<div class="card-body">' +
         '<div class="card-title">' + esc(item.title) + '</div>' +
         '<div class="card-meta"><span>' + esc(item.year || '—') + '</span><span class="dot">·</span>' +
@@ -161,25 +187,28 @@
         '<div class="card-tags">' + item.genres.slice(0, 2).map(function (g) {
           return '<span class="tag">' + esc(g) + '</span>';
         }).join('') + '</div>' +
-      '</div>');
-    return a;
+      '</div></a>';
+  }
+
+  function cardEl(item) {
+    var box = el('div');
+    box.innerHTML = cardHTML(item);
+    return box.firstChild;
   }
 
   /* ------------------------------------------------------- 检索与排序 */
   function matchQuery(item, q) {
     if (!q) return true;
-    q = q.toLowerCase();
-    return (item.title + ' ' + item.category + ' ' + item.genres.join(' ') + ' ' +
-            item.region + ' ' + (item.actors || []).join(' ') + ' ' + (item.director || '') + ' ' + item.year)
-           .toLowerCase().indexOf(q) > -1;
+    return item._s.indexOf(q.toLowerCase()) > -1;
   }
 
   function search(q, limit) {
-    var hit = DB.filter(function (i) { return matchQuery(i, q); });
+    var lq = String(q).toLowerCase();
+    var hit = DB.filter(function (i) { return matchQuery(i, lq); });
     // 片名直接命中的排前面
     hit.sort(function (a, b) {
-      var ai = a.title.toLowerCase().indexOf(q.toLowerCase()) > -1 ? 0 : 1;
-      var bi = b.title.toLowerCase().indexOf(q.toLowerCase()) > -1 ? 0 : 1;
+      var ai = a.title.toLowerCase().indexOf(lq) > -1 ? 0 : 1;
+      var bi = b.title.toLowerCase().indexOf(lq) > -1 ? 0 : 1;
       return ai - bi || b.year - a.year;
     });
     return limit ? hit.slice(0, limit) : hit;
@@ -219,10 +248,13 @@
 
     function close() { sug.classList.remove('is-open'); cursor = -1; }
 
+    var onList = document.body.dataset.page === 'list';
+
     function render() {
       var q = input.value.trim();
       box.classList.toggle('has-value', !!q);
-      if (!q) { close(); return; }
+      // 片库页的结果就在下面实时变,再弹个下拉盖住它没有意义
+      if (!q || onList) { close(); return; }
       var hits = search(q, 6);
       sug.innerHTML = hits.length
         ? hits.map(function (it) {
@@ -332,6 +364,20 @@
              '<p>' + esc(desc) + '</p>' +
              (primary || '') +
            '</div>';
+  }
+
+  /** data.js 没读进来时的提示。说清楚是文件的问题,不是没数据 */
+  function showDataError(host) {
+    if (!host) return;
+    host.className = '';
+    host.innerHTML =
+      '<div class="empty">' +
+        '<div class="empty-icon">' + svg('empty') + '</div>' +
+        '<h3>数据文件没能读出来</h3>' +
+        '<p>assets/js/data.js 没有正常加载 —— 多半是手动编辑时漏了逗号或括号。<br>' +
+        '你的片子还在文件里,没有丢。按 F12 打开控制台,红色那行会指出第几行写错了。</p>' +
+        '<a class="btn btn-ghost" href="admin.html">打开录入台</a>' +
+      '</div>';
   }
 
   var ADMIN_BTN = '<a class="btn btn-primary" href="admin.html">' +
@@ -450,6 +496,8 @@
   /* =========================================================== 首页 */
   function initHome() {
     // 一部都没有:收起首页的各个区块,只留头图和一句「从这里开始」
+    if (!DB_OK) return showDataError($('main'));
+
     if (!DB.length) {
       var hero = $('.hero');
       if (hero) hero.classList.add('is-bare');
@@ -547,12 +595,17 @@
       return;
     }
     if (sec) sec.hidden = false;
-    items.forEach(function (it) { row.appendChild(cardEl(it)); });
+    row.insertAdjacentHTML('beforeend', items.map(cardHTML).join(''));
   }
 
   /* =========================================================== 片库页 */
   function initList() {
     // 一部都没有:筛选栏没有意义,直接给空态
+    if (!DB_OK) {
+      $$('.filters, .result-bar').forEach(function (n) { n.hidden = true; });
+      return showDataError($('#grid'));
+    }
+
     if (!DB.length) {
       $$('.filters, .result-bar').forEach(function (n) { n.hidden = true; });
       $('#grid').className = '';
@@ -662,9 +715,14 @@
 
     // 顶栏搜索框在片库页里直接过滤,不跳转
     if (searchInput) {
+      var typeTimer;
       searchInput.addEventListener('input', function () {
-        state.q = searchInput.value.trim();
-        apply();
+        clearTimeout(typeTimer);
+        // 连着打字时先不重绘,停手 140ms 再筛 —— 片子多了逐字重绘会明显卡顿
+        typeTimer = setTimeout(function () {
+          state.q = searchInput.value.trim();
+          apply();
+        }, 140);
       });
     }
     window.__listSearch = function (q) { state.q = q; apply(); };
@@ -743,9 +801,7 @@
         });
       } else {
         grid.className = 'poster-grid';
-        var frag = document.createDocumentFragment();
-        list.forEach(function (it) { frag.appendChild(cardEl(it)); });
-        grid.appendChild(frag);
+        grid.innerHTML = list.map(cardHTML).join('');
       }
       renderActive();
       syncUrl();
@@ -761,6 +817,7 @@
     for (var i = 0; i < DB.length; i++) if (DB[i].id === id) { item = DB[i]; break; }
 
     var root = $('#detail');
+    if (!DB_OK) return showDataError(root);
     if (!item) {
       document.title = '未找到该影视 · ' + ((window.SITE && window.SITE.full) || '影视收藏馆');
       root.innerHTML =
@@ -874,5 +931,5 @@
   });
 
   // 供页面内联脚本 / 调试使用
-  window.MC = { CATEGORIES: CATEGORIES, search: search, cardEl: cardEl, svg: svg, safeUrl: safeUrl };
+  window.MC = { CATEGORIES: CATEGORIES, search: search, cardEl: cardEl, cardHTML: cardHTML, svg: svg, safeUrl: safeUrl };
 })();
