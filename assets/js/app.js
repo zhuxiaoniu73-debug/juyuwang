@@ -42,6 +42,21 @@
   var DB_OK = Array.isArray(window.MEDIA_DB);
   var DB = (DB_OK ? window.MEDIA_DB : []).map(normalize);
 
+  var LOG = window.MCLog || { info: function () {}, warn: function () {}, error: function () {} };
+  if (!DB_OK) {
+    LOG.error('data.js 没读进来', 'window.MEDIA_DB 不是数组,多半是文件里有语法错误');
+  } else {
+    LOG.info('读取数据', DB.length + ' 条');
+    // 缺字段的条目挨个记一笔,方便回头照着改
+    DB.forEach(function (it, i) {
+      var miss = [];
+      if (!it.genres.length) miss.push('genres');
+      if (!it.year) miss.push('year');
+      if (!it.added) miss.push('added');
+      if (miss.length) LOG.warn('第 ' + (i + 1) + ' 条「' + it.title + '」缺字段', miss.join(', ') + '(已按默认值处理)');
+    });
+  }
+
   /* ---------------------------------------------------------- 分类配置 */
   var ICONS = {
     film:  '<path d="M3 4h18v16H3z"/><path d="M7 4v16M17 4v16M3 10h18M3 14h18"/>',
@@ -375,7 +390,8 @@
         '<div class="empty-icon">' + svg('empty') + '</div>' +
         '<h3>数据文件没能读出来</h3>' +
         '<p>assets/js/data.js 没有正常加载 —— 多半是手动编辑时漏了逗号或括号。<br>' +
-        '你的片子还在文件里,没有丢。按 F12 打开控制台,红色那行会指出第几行写错了。</p>' +
+        '你的片子还在文件里,没有丢。具体错在哪一行,去录入台底部的「运行日志」看,' +
+        '或者按 F12 看控制台。</p>' +
         '<a class="btn btn-ghost" href="admin.html">打开录入台</a>' +
       '</div>';
   }
@@ -819,6 +835,7 @@
     var root = $('#detail');
     if (!DB_OK) return showDataError(root);
     if (!item) {
+      LOG.warn('详情页找不到这条', 'id=' + id);
       document.title = '未找到该影视 · ' + ((window.SITE && window.SITE.full) || '影视收藏馆');
       root.innerHTML =
         '<div class="empty">' +
@@ -874,6 +891,7 @@
       '<div class="info-item"><dt>接入</dt><dd>' + esc(item.added || '未填') + '</dd></div>';
 
     var resUrl = safeUrl(item.resource);
+    if (item.resource && !resUrl) LOG.warn('资源链接不是有效地址,已忽略', item.title + ' → ' + item.resource);
 
     var actors = (item.actors || []).map(function (a) {
       var ah = hueOf(a);

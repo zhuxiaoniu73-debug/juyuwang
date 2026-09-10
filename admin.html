@@ -139,6 +139,45 @@
     font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.6;
   }
 
+  /* 运行日志 */
+  #log-list { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow-y: auto; }
+  .log-item {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 4px 10px;
+    align-items: baseline;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .log-item:last-child { border-bottom: 0; }
+  .log-time {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px; color: var(--text-faint); white-space: nowrap;
+  }
+  .log-lv {
+    padding: 1px 7px; border-radius: 5px; font-size: 11px; white-space: nowrap;
+    background: rgba(255,255,255,.07); color: var(--text-dim);
+  }
+  .log-lv.error { background: rgba(229,86,63,.18); color: #ff7a63; }
+  .log-lv.warn  { background: rgba(240,180,74,.15); color: var(--gold); }
+  .log-msg { min-width: 0; word-break: break-word; }
+  .log-detail {
+    grid-column: 3;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px; color: var(--text-faint); word-break: break-all;
+    white-space: pre-wrap;
+  }
+  .log-stat { font-size: 12.5px; color: var(--text-faint); margin-inline-end: auto; }
+  .log-stat b { color: #ff7a63; font-variant-numeric: tabular-nums; }
+  #log-text {
+    width: 100%; min-height: 160px; margin-top: 12px; padding: 12px;
+    border-radius: 10px; border: 1px solid var(--line); background: #060a0b;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.6;
+  }
+  .log-empty { padding: 26px; text-align: center; color: var(--text-faint); font-size: 13px; }
+
   .source-warn {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
     margin: 16px var(--page-x) 0;
@@ -318,11 +357,28 @@
       <ul id="list"></ul>
       <textarea id="export-text" hidden readonly></textarea>
     </div>
+
+    <div class="panel" id="log" style="margin-top: 20px">
+      <h2>运行日志</h2>
+      <p class="hint">页面出错、存盘失败、批量粘贴的结果都会记在这儿。
+        只存在这台设备的浏览器里,不上传;最多留 300 条。
+        遇到搞不定的问题,点「复制全部」把它发给我。</p>
+      <div class="list-head">
+        <label class="switch"><input type="checkbox" id="log-only-err"> 只看错误</label>
+        <span class="log-stat" id="log-stat"></span>
+        <button type="button" class="btn btn-ghost" id="log-copy">复制全部</button>
+        <button type="button" class="btn btn-ghost" id="log-clear">清空</button>
+      </div>
+      <ul id="log-list"></ul>
+      <textarea id="log-text" hidden readonly></textarea>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<!-- 日志要最先加载,才能抓到后面脚本自己的报错 -->
+<script src="assets/js/log.js"></script>
 <script src="assets/js/site.js"></script>
 <script src="assets/js/data.js"></script>
 <script src="assets/js/app.js"></script>

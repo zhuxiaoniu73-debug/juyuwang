@@ -10,6 +10,8 @@
   /* data.js 解析失败时 window.MEDIA_DB 是 undefined。这时候草稿会是空的,
      一旦导出就会用空文件盖掉原数据 —— 必须先拦住。 */
   var SOURCE_OK = Array.isArray(window.MEDIA_DB);
+  var LOG = window.MCLog || { info: function () {}, warn: function () {}, error: function () {} };
+  if (!SOURCE_OK) LOG.error('录入台:data.js 没读进来', '导出会覆盖丢数据,已拦截');
   var CATEGORIES = (window.MC && window.MC.CATEGORIES) || [];
   var BASE = window.MEDIA_DB || [];
 
@@ -29,6 +31,8 @@
     t.className = 'toast is-on' + (bad ? ' is-bad' : '');
     clearTimeout(toast._t);
     toast._t = setTimeout(function () { t.className = 'toast'; }, 2600);
+    // 每个动作都会弹提示,顺手把日志刷一下 —— 否则要等定时器,操作完看不到
+    if (typeof renderLog === 'function') renderLog();
   }
 
   /* ------------------------------------------------------------ 草稿 */
@@ -52,6 +56,7 @@
     try {
       localStorage.setItem(KEY, JSON.stringify(draft));
     } catch (e) {
+      LOG.error('草稿存不进 localStorage', '多半是海报图太多,超出浏览器配额:' + (e && e.message));
       toast('浏览器存不下了 —— 海报图太多的话,先导出一次 data.js', true);
     }
   }
@@ -268,9 +273,11 @@
 
     if (editing) {
       draft[draft.indexOf(editing)] = obj;
+      LOG.info('改了一条', title);
       toast('已更新:' + title);
     } else {
       draft.unshift(obj);
+      LOG.info('加了一条', title);
       toast('已添加:' + title);
     }
     persist();
@@ -282,6 +289,7 @@
   $('#btn-del').addEventListener('click', function () {
     if (!editing) return;
     if (!confirm('删掉「' + editing.title + '」?')) return;
+    LOG.info('删了一条', editing.title);
     draft.splice(draft.indexOf(editing), 1);
     persist();
     clearForm();
@@ -356,6 +364,8 @@
 
     persist();
     renderList();
+    LOG.info('批量粘贴', '补链接 ' + updated + ' 条,新增 ' + added + ' 条' +
+             (bad.length ? ',没认出来 ' + bad.length + ' 行:' + bad.slice(0, 3).join(' / ') : ''));
     var msg = '补链接 ' + updated + ' 条,新增 ' + added + ' 条';
     if (bad.length) msg += ',' + bad.length + ' 行没认出来';
     toast(msg, bad.length > 0);
@@ -480,7 +490,8 @@
   $('#btn-copy').addEventListener('click', function () {
     if (!exportGuard()) return;
     var text = serialize();
-    var done = function () { toast('已复制(' + sizeNote(text) + ')—— 覆盖 assets/js/data.js 即可'); };
+    var done = function () { LOG.info('导出 data.js(复制)', draft.length + ' 条,' + sizeNote(text));
+      toast('已复制(' + sizeNote(text) + ')—— 覆盖 assets/js/data.js 即可'); };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
     } else {
@@ -510,8 +521,10 @@
       a.href = url; a.download = 'data.js';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      LOG.info('导出 data.js(下载)', draft.length + ' 条,' + sizeNote(text));
       toast('已下载 data.js(' + sizeNote(text) + ')');
     } catch (e) {
+      LOG.warn('下载被浏览器拦下', String(e && e.message));
       toast('下载被拦了,用「复制」那个按钮', true);
     }
   });
@@ -531,9 +544,67 @@
     toast('已回到文件内容');
   });
 
+  /* ---------------------------------------------------------- 运行日志 */
+  var logOnlyErr = false;
+
+  function renderLog() {
+    var host = $('#log-list');
+    if (!host || !window.MCLog) return;
+    var all = window.MCLog.all();
+    var errs = all.filter(function (x) { return x.lv === 'error'; }).length;
+    var warns = all.filter(function (x) { return x.lv === 'warn'; }).length;
+    $('#log-stat').innerHTML = '共 ' + all.length + ' 条' +
+      (errs ? ',错误 <b>' + errs + '</b> 条' : '') + (warns ? ',警告 ' + warns + ' 条' : '');
+
+    var list = (logOnlyErr ? all.filter(function (x) { return x.lv === 'error'; }) : all).slice().reverse();
+    host.innerHTML = list.map(function (x) {
+      return '<li class="log-item">' +
+        '<span class="log-time">' + esc(x.t.slice(5)) + '</span>' +
+        '<span class="log-lv ' + esc(x.lv) + '">' + esc(x.lv) + '</span>' +
+        '<span class="log-msg">' + esc(x.m) + '</span>' +
+        (x.d ? '<span class="log-detail">' + esc(x.d) + '</span>' : '') +
+      '</li>';
+    }).join('') || '<li class="log-empty">' + (logOnlyErr ? '没有错误记录 —— 挺好' : '还没有记录') + '</li>';
+  }
+
+  var onlyErrBox = $('#log-only-err');
+  if (onlyErrBox) onlyErrBox.addEventListener('change', function () {
+    logOnlyErr = this.checked; renderLog();
+  });
+
+  var logCopy = $('#log-copy');
+  if (logCopy) logCopy.addEventListener('click', function () {
+    var text = window.MCLog ? window.MCLog.text() : '';
+    var done = function () { toast('日志已复制,粘贴出来就能发给别人'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { showLogText(text); });
+    } else { showLogText(text); }
+  });
+
+  function showLogText(text) {
+    var ta = $('#log-text');
+    ta.hidden = false; ta.value = text; ta.select();
+    try {
+      document.execCommand('copy') ? toast('日志已复制') : toast('自动复制没成功,下面框里全选复制', true);
+    } catch (e) { toast('自动复制没成功,下面框里全选复制', true); }
+  }
+
+  var logClear = $('#log-clear');
+  if (logClear) logClear.addEventListener('click', function () {
+    if (!confirm('清空运行日志?(只清日志,不动你的片子)')) return;
+    window.MCLog && window.MCLog.clear();
+    renderLog();
+    toast('日志已清空');
+  });
+
+  // 页面开着的时候也可能冒出新错误,隔几秒刷一下
+  // 页面开着时也可能冒出新错误(比如异步报错),兜底轮询
+  setInterval(renderLog, 4000);
+
   /* ------------------------------------------------------------ 启动 */
   clearForm();
   renderList();
+  renderLog();
 
   if (!SOURCE_OK) {
     var warn = document.createElement('div');

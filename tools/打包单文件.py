@@ -56,6 +56,7 @@ def build(bare=False):
 
     data_js = read('assets', 'js', 'data.js')
 
+    log_js = read('assets', 'js', 'log.js')
     site_js = read('assets', 'js', 'site.js')
     app = read('assets', 'js', 'app.js')
     app = app.replace('detail.html?id=', '#/detail?id=')
@@ -135,9 +136,13 @@ def build(bare=False):
     assert 'admin.html' not in app
 
     chrome = read('index.html')
-    header = chrome[chrome.index('<header class="site-header">'):chrome.index('</header>') + 9]
-    footer = chrome[chrome.index('<footer class="site-footer">'):chrome.index('</footer>') + 9]
-    tabbar = chrome[chrome.index('<nav class="tab-bar"'):chrome.index('</nav>\n\n<script') + 6]
+    _h = chrome.index('<header class="site-header">')
+    header = chrome[_h:chrome.index('</header>', _h) + len('</header>')]
+    _f = chrome.index('<footer class="site-footer">')
+    footer = chrome[_f:chrome.index('</footer>', _f) + len('</footer>')]
+    # 从底栏开头往后找第一个 </nav>,别依赖它后面紧跟着什么
+    _tb = chrome.index('<nav class="tab-bar"')
+    tabbar = chrome[_tb:chrome.index('</nav>', _tb) + len('</nav>')]
     header, footer, tabbar = hashify(header), hashify(footer), hashify(tabbar)
 
     tpl = {k: hashify(main_of(k + '.html' if k != 'home' else 'index.html'))
@@ -168,6 +173,7 @@ def build(bare=False):
 
 %s
 
+<script>window.MC_SINGLE = true;</script>
 <script>
 %s
 </script>
@@ -180,7 +186,10 @@ def build(bare=False):
 <script>
 %s
 </script>
-''' % (css, header, footer, tabbar,
+<script>
+%s
+</script>
+''' % (css, header, footer, tabbar, inline_js(log_js),
        inline_js(site_js), inline_js(data_js), inline_js(tpl_js), inline_js(app))
 
     return body if bare else (head + body + u'</body>\n</html>\n')
