@@ -411,7 +411,7 @@
     ' *   description 简介           Description',
     ' *   resource    资源入口链接    Resource URL 留空则详情页按钮置灰',
     ' *   resourceNote 提取码/说明    Resource Note(可选,显示在资源按钮下面)',
-    ' *   added       入列日期        (YYYY-MM-DD,首页「新近入列」按它排序)',
+    ' *   added       接入日期        (YYYY-MM-DD,首页「新近接入」按它排序)',
     ' *   hot         是否热门        (true 会进首页「热门影视」)',
     ' */',
     ''
