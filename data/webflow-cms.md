@@ -45,18 +45,16 @@
 
 ## 导入现有数据
 
-`data/影视库.csv` 是从 `assets/js/data.js` 直接导出的 52 条记录,列名就是上表的字段名。
-
-1. 在 Webflow 里按上表建好集合和字段
-2. 集合页右上角 → **Import** → 上传 `data/影视库.csv`
-3. 逐列确认映射关系(列名一致时 Webflow 会自动配好)
-4. Image 列为空属正常 —— 导入后再逐条上传封面
-
-数据改过之后重新导出:
+先跑一下导出,把当前 `assets/js/data.js` 里的内容变成 CSV(列名就是上表的字段名):
 
 ```bash
-node data/export-csv.js
+node data/export-csv.js      # 生成 data/影视库.csv
 ```
+
+1. 在 Webflow 里按上表建好集合和字段
+2. 集合页右上角 → **Import** → 上传刚生成的 `data/影视库.csv`
+3. 逐列确认映射关系(列名一致时 Webflow 会自动配好)
+4. Image 列为空属正常 —— 导入后再逐条上传封面
 
 ## 反过来:从 CMS 回到本站
 

@@ -254,25 +254,57 @@
     $$('.reveal').forEach(function (n) { io.observe(n); });
   }
 
+  /** 空态块:馆里还没东西时给个明确的下一步,而不是露出空架子 */
+  function emptyBlock(title, desc, primary) {
+    return '<div class="empty">' +
+             '<div class="empty-icon">' + svg('empty') + '</div>' +
+             '<h3>' + esc(title) + '</h3>' +
+             '<p>' + esc(desc) + '</p>' +
+             (primary || '') +
+           '</div>';
+  }
+
+  var ADMIN_BTN = '<a class="btn btn-primary" href="admin.html">' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+                  'stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>打开录入台</a>';
+
   /* =========================================================== 首页 */
   function initHome() {
+    // 一部都没有:收起首页的各个区块,只留头图和一句「从这里开始」
+    if (!DB.length) {
+      var hero = $('.hero');
+      if (hero) hero.classList.add('is-bare');
+      $$('.hero-stats, #hero-art').forEach(function (n) { n.hidden = true; });
+      var acts = $('.hero-actions');
+      if (acts) acts.innerHTML = ADMIN_BTN;
+      $$('main > .section').forEach(function (n) { n.hidden = true; });
+      var box = el('section', 'section');
+      box.innerHTML = '<div class="wrap">' + emptyBlock(
+        '馆里还是空的',
+        '打开录入台加第一部片子 —— 填个片名和资源链接就行,首页立刻就有了。',
+        ADMIN_BTN) + '</div>';
+      $('main').appendChild(box);
+      return;
+    }
+
     // 统计数字
-    var stats = { total: DB.length, cat: CATEGORIES.length,
+    var stats = { total: DB.length,
+                  cat: new Set(DB.map(function (i) { return i.category; })).size,
                   region: new Set(DB.map(function (i) { return i.region; })).size,
                   year: new Set(DB.map(function (i) { return i.year; })).size };
     $$('[data-stat]').forEach(function (n) { n.textContent = stats[n.dataset.stat]; });
 
     // 热门影视:标了 hot 的,按评分排
     var hot = DB.filter(function (i) { return i.hot; }).sort(SORTS.rating);
-    fillRow($('#row-hot'), hot);
+    fillRow($('#row-hot'), hot, '#sec-hot');
 
     // 最新添加:按收录日期倒序
     var recent = DB.slice().sort(SORTS.added).slice(0, 14);
-    fillRow($('#row-recent'), recent);
+    fillRow($('#row-recent'), recent, '#sec-recent');
 
-    // 高分推荐
-    var top = DB.slice().sort(SORTS.rating).slice(0, 14);
-    fillRow($('#row-top'), top);
+    // 高分推荐:没填评分的不进这一区
+    var top = DB.filter(function (i) { return i.rating; }).sort(SORTS.rating).slice(0, 14);
+    fillRow($('#row-top'), top, '#sec-top');
 
     // 头图右侧的装饰海报:取评分最高的三部
     var art = $('#hero-art');
@@ -285,7 +317,12 @@
     // 分类入口
     var grid = $('#cat-grid');
     if (grid) {
-      CATEGORIES.forEach(function (c) {
+      var live = CATEGORIES.filter(function (c) {
+        return DB.some(function (i) { return i.category === c.name; });
+      });
+      var secCat = $('#categories');
+      if (!live.length && secCat) secCat.hidden = true;
+      live.forEach(function (c) {
         var count = DB.filter(function (i) { return i.category === c.name; }).length;
         var a = el('a', 'cat-card reveal');
         a.href = 'list.html?category=' + encodeURIComponent(c.name);
@@ -312,14 +349,32 @@
     }
   }
 
-  function fillRow(row, items) {
+  /** 填一行卡片;这一行没内容就把整个区块收起来 */
+  function fillRow(row, items, sectionSel) {
     if (!row) return;
-    if (!items.length) { row.innerHTML = '<p class="section-sub">暂无内容</p>'; return; }
+    var sec = sectionSel ? $(sectionSel) : null;
+    if (!items.length) {
+      if (sec) sec.hidden = true;
+      else row.innerHTML = '';
+      return;
+    }
+    if (sec) sec.hidden = false;
     items.forEach(function (it) { row.appendChild(cardEl(it)); });
   }
 
   /* =========================================================== 片库页 */
   function initList() {
+    // 一部都没有:筛选栏没有意义,直接给空态
+    if (!DB.length) {
+      $$('.filters, .result-bar').forEach(function (n) { n.hidden = true; });
+      $('#grid').className = '';
+      $('#grid').innerHTML = emptyBlock(
+        '还没有收录任何影视',
+        '在录入台里加一条,这里就会出现一张海报卡片。',
+        ADMIN_BTN);
+      return;
+    }
+
     var state = { q: '', category: '全部', genre: '', year: '', region: '', sort: 'added' };
     var params = new URLSearchParams(location.search);
     ['q', 'category', 'genre', 'year', 'region', 'sort'].forEach(function (k) {

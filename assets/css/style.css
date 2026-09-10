@@ -58,6 +58,10 @@ body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 
 img { max-width: 100%; display: block; }
 
+/* 元素只要设了 display,浏览器默认的 [hidden]{display:none} 就压不住了,
+   而站里到处在用 hidden 开关区块,所以这里统一兜底 */
+[hidden] { display: none !important; }
+
 a { color: inherit; text-decoration: none; }
 
 button, input, select { font: inherit; color: inherit; }
@@ -614,6 +618,9 @@ button, input, select { font: inherit; color: inherit; }
   overflow: hidden;
   border-bottom: 1px solid var(--line-soft);
 }
+/* 一部片子都没有时,头图不必占满一屏 */
+.hero.is-bare { min-height: auto; padding-block: clamp(40px, 7vw, 76px); }
+
 .hero-bg { position: absolute; inset: 0; z-index: 0; }
 .hero-bg::before {
   content: '';

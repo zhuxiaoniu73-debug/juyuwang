@@ -33,7 +33,8 @@
   try {
     draft = JSON.parse(localStorage.getItem(KEY));
   } catch (e) { draft = null; }
-  if (!Array.isArray(draft) || !draft.length) draft = JSON.parse(JSON.stringify(BASE));
+  // 注意只认「有没有存过草稿」,不能拿长度判断 —— 否则手动删空之后一刷新又被灌回来
+  if (!Array.isArray(draft)) draft = JSON.parse(JSON.stringify(BASE));
 
   function persist() {
     try {
@@ -378,7 +379,9 @@
         '</span>' +
         '<span class="row-flag">' + (flags.length ? flags.join('') : '<span>齐了</span>') + '</span>' +
       '</li>';
-    }).join('') || '<li class="row-empty">没有匹配的条目</li>';
+    }).join('') || '<li class="row-empty">' +
+      (draft.length ? '没有匹配的条目' : '还是空的 —— 左边填一条,或者上面批量粘贴几行链接') +
+      '</li>';
   }
 
   $('#list').addEventListener('click', function (e) {
@@ -493,6 +496,27 @@
     ta.hidden = !ta.hidden;
     if (!ta.hidden) { ta.value = serialize(); ta.select(); }
   });
+
+  var sampleBtn = $('#btn-sample');
+  if (sampleBtn) {
+    if (!window.MEDIA_SAMPLE) sampleBtn.hidden = true;
+    sampleBtn.addEventListener('click', function () {
+      if (!window.MEDIA_SAMPLE) return;
+      if (draft.length && !confirm('把 ' + window.MEDIA_SAMPLE.length +
+          ' 条示例加进来?(你已有的条目不会丢)')) return;
+      var have = {};
+      draft.forEach(function (i) { have[i.title] = true; });
+      var n = 0;
+      window.MEDIA_SAMPLE.forEach(function (i) {
+        if (have[i.title]) return;
+        draft.push(JSON.parse(JSON.stringify(i)));
+        n++;
+      });
+      persist();
+      renderList();
+      toast('载入了 ' + n + ' 条示例 —— 看完点「丢弃草稿」就能退回去');
+    });
+  }
 
   $('#btn-reset').addEventListener('click', function () {
     if (!confirm('丢掉浏览器里的草稿,回到 data.js 文件里的内容?')) return;

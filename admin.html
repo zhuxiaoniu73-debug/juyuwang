@@ -165,6 +165,7 @@
   <span class="badge">缺链接 <b id="stat-missing">0</b> 条</span>
 
   <span class="spacer"></span>
+  <button type="button" class="btn btn-ghost" id="btn-sample">载入示例</button>
   <button type="button" class="btn btn-ghost" id="btn-reset">丢弃草稿</button>
   <button type="button" class="btn btn-ghost" id="btn-show">查看文本</button>
   <button type="button" class="btn btn-ghost" id="btn-download">下载 data.js</button>
@@ -309,6 +310,8 @@
 <div class="toast" id="toast"></div>
 
 <script src="assets/js/data.js"></script>
+<!-- 只有录入台会加载示例数据;对外的三个页面不加载 -->
+<script src="data/示例数据.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/admin.js"></script>
 </body>
