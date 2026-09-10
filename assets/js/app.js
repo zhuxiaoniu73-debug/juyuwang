@@ -504,7 +504,14 @@
       var secCat = $('#categories');
       if (!live.length && secCat) secCat.hidden = true;
       live.forEach(function (c) {
-        var count = DB.filter(function (i) { return i.category === c.name; }).length;
+        var mine = DB.filter(function (i) { return i.category === c.name; });
+        var count = mine.length;
+        // 只列真的有片子的类型 —— 否则点进去是「没有匹配的影视」,白跑一趟。
+        // 顺序:配置里的排前面,数据里出现的其它类型补在后面
+        var used = {};
+        mine.forEach(function (i) { i.genres.forEach(function (g) { used[g] = true; }); });
+        var genres = c.genres.filter(function (g) { return used[g]; })
+          .concat(Object.keys(used).filter(function (g) { return c.genres.indexOf(g) === -1; }));
         var a = el('a', 'cat-card reveal');
         a.href = 'list.html?category=' + encodeURIComponent(c.name);
         a.style.setProperty('--cat-color', c.color);
@@ -514,7 +521,7 @@
             '<span class="cat-name">' + esc(c.name) + '</span>' +
             '<span class="cat-count">' + count + ' 部</span>' +
           '</div>' +
-          '<div class="cat-genres">' + c.genres.map(function (g) {
+          '<div class="cat-genres">' + genres.map(function (g) {
             return '<span class="chip" data-genre="' + esc(g) + '">' + esc(g) + '</span>';
           }).join('') + '</div>';
         // 点具体类型标签时,直接带着类型进片库
