@@ -66,13 +66,14 @@
     text = String(text || '').trim();
     if (!text) return null;
 
-    var url = '';
+    // at / rawLen 记的是链接在原文里的位置和长度,批量框靠它把片名和提取码切开
+    var url = '', at = -1, rawLen = 0;
     var m = text.match(/(https?:\/\/[^\s"'<>，,、]+)/i);
-    if (m) url = m[1];
+    if (m) { url = m[1]; at = m.index; rawLen = m[1].length; }
     else {
       // 没带协议的裸地址:pan.quark.cn/s/xxxx
       var m2 = text.match(/((?:pan|yun|drive|cloud)\.[\w.-]+\.[a-z]{2,}\/[^\s"'<>，,、]+)/i);
-      if (m2) url = 'https://' + m2[1];
+      if (m2) { url = 'https://' + m2[1]; at = m2.index; rawLen = m2[1].length; }
     }
     if (!url) return null;
     url = url.replace(/[。.,,;;)）】\]]+$/, '');
@@ -89,7 +90,8 @@
     var host = '';
     try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) {}
 
-    return { url: url, code: code, host: host, name: pickName(text), raw: text };
+    return { url: url, code: code, host: host, at: at, rawLen: rawLen,
+             name: pickName(text), raw: text };
   }
 
   /* 网盘分享那段的头一行通常带着文件名:
@@ -241,7 +243,10 @@
         '<input id="mc-title" type="text" list="mc-titles" autocomplete="off" placeholder="这条链接是哪部片子的">' +
         '<datalist id="mc-titles">' + db.map(function (x) {
           return '<option value="' + esc(x.title) + '"></option>';
-        }).join('') + '</datalist>' +
+        }).concat(Object.keys(window.MCLinks.all()).map(function (id) {
+          var v = window.MCLinks.all()[id];
+          return v.title ? '<option value="' + esc(v.title) + '"></option>' : '';
+        })).join('') + '</datalist>' +
         '<div class="mc-namehint" id="mc-namehint"></div>' +
       '</div>' +
       '<div class="mc-field">' +
@@ -281,9 +286,12 @@
         return;
       }
       var hit = idOfTitle(name);
+      var pending = !hit && window.MCLinks.all()[name];
       nameHint.innerHTML = hit
         ? '<span class="mc-ok">库里已有</span>《' + esc(name) + '》—— 给它补上链接'
-        : '<span class="mc-dim">库里没有</span>「' + esc(name) + '」—— 会<b>新建</b>一部';
+        : pending
+          ? '<span class="mc-ok">刚在站上建过</span>《' + esc(name) + '》—— 会<b>换掉</b>之前填的链接'
+          : '<span class="mc-dim">库里没有</span>「' + esc(name) + '」—— 会<b>新建</b>一部';
     }
 
     function drawSave() {
@@ -311,15 +319,17 @@
       if (!parsed || !name) return;
       var id = idOfTitle(name) || name;
       var isNew = !idOfTitle(name);
+      var already = isNew && !!window.MCLinks.all()[id];
       var note = parsed.code ? '提取码 ' + parsed.code : '';
       window.MCLinks.set(id, parsed.url, note, isNew ? name : '');
-      if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(id, parsed.url, note);
+      if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(id, parsed.url, note, isNew ? name : '');
       one.value = '';
       if (!current) nameInput.value = '';
       parsed = null;
       onLink();
       renderPending();
-      flash(isNew ? '已新建《' + name + '》并存好链接' : '已存给《' + name + '》');
+      flash(already ? '已换掉《' + name + '》的链接'
+                    : isNew ? '已新建《' + name + '》并存好链接' : '已存给《' + name + '》');
     });
 
     document.getElementById('mc-save-bulk').addEventListener('click', function () {
@@ -327,18 +337,20 @@
       var lines = ta.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
       var okN = 0, newN = 0, bad = [];
       lines.forEach(function (line) {
-        var cols = line.split(/\s*[|｜\t]\s*/);
-        var title = cols[0];
-        if (!title) { bad.push(line + '  ← 没有片名'); return; }
-        var r = parseShare(cols.slice(1).join(' ')) || parseShare(line);
+        var r = parseShare(line);
         if (!r) { bad.push(line + '  ← 没认出链接'); return; }
+        // 按链接在这一行里的位置切:前面全是片名,后面是提取码。
+        // 这样片名里带竖线也不会被切坏。
+        var title = line.slice(0, r.at).replace(/[|｜\t]\s*$/, '').trim();
+        var tail = line.slice(r.at + r.rawLen);
+        if (!title) { bad.push(line + '  ← 没有片名'); return; }
         var id = idOfTitle(title);
         var isNew = !id;
         if (isNew) { id = title; newN++; }
-        var raw = cols[2] && !/^https?:/i.test(cols[2]) ? cols[2] : r.code;
+        var raw = tail.replace(/^[\s|｜\t]+/, '').trim() || r.code;
         var note = raw ? (/提取码|密码|访问码/.test(raw) ? raw : '提取码 ' + raw) : '';
         window.MCLinks.set(id, r.url, note, isNew ? title : '');
-        if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(id, r.url, note);
+        if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(id, r.url, note, isNew ? title : '');
         okN++;
       });
       ta.value = bad.join('\n');

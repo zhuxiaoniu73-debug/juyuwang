@@ -593,6 +593,15 @@
     var top = DB.filter(function (i) { return i.rating; }).sort(SORTS.rating).slice(0, 14);
     fillRow($('#row-top'), top, '#sec-top');
 
+    // 有新条目进来时,把这几块清掉重画一遍
+    refreshView = function () {
+      ['#row-hot', '#row-recent', '#row-top', '#cat-grid', '#hero-art'].forEach(function (sel) {
+        var n = $(sel);
+        if (n) n.innerHTML = '';
+      });
+      initHome();
+    };
+
     initNetBackdrop();
 
     // 头图右侧的装饰海报:取评分最高的三部
@@ -867,6 +876,7 @@
       syncUrl();
     }
 
+    refreshView = apply;
     apply();
   }
 
@@ -989,8 +999,12 @@
     '</div>';
   }
 
-  /* 「链接」模块存完后调这个:数据就地更新,按钮当场亮起来,不用刷新 */
-  window.MC_APPLY_LINK = function (id, resource, note) {
+  /* 各页控制器把「重画当前这页」的办法登记在这儿,
+     好让「链接」模块存完之后页面立刻跟着变,不用手动刷新 */
+  var refreshView = null;
+
+  /* 「链接」模块存完后调这个 */
+  window.MC_APPLY_LINK = function (id, resource, note, title) {
     for (var i = 0; i < DB.length; i++) {
       if (DB[i].id !== id) continue;
       DB[i].resource = resource;
@@ -1000,9 +1014,20 @@
       if (block && document.body.dataset.page === 'detail') {
         block.outerHTML = actionsHTML(DB[i]);
         LOG.info('资源按钮就地更新', id);
+      } else if (refreshView) {
+        refreshView();
       }
       return;
     }
+    // 库里没有这部 —— 现场补一条临时记录,列表/首页立刻就能看到
+    if (!title) return;
+    var stub = normalize({ id: id, title: title, resource: resource,
+                           resourceNote: note, added: '' }, DB.length);
+    stub._localLink = true;
+    stub._localNew = true;
+    DB.push(stub);
+    LOG.info('站上新建了一条', title + '(尚未写进 data.js)');
+    if (refreshView) refreshView();
   };
 
   /** 详情页的海报上传:点、拖、粘贴都行,换完立刻生效 */
