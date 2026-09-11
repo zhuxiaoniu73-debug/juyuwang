@@ -93,7 +93,7 @@
   }
 
   /* 网盘分享那段的头一行通常带着文件名:
-       通过网盘分享的文件:亮剑.2005.1080P.国语中字.mkv
+       通过网盘分享的文件:片名.2005.1080P.国语中字.mkv
      把它抠出来,再洗掉画质、字幕、集数这些噪音,就能拿去跟片库比对。 */
   function pickName(text) {
     var m = text.match(/(?:通过网盘分享的文件|我通过网盘分享的文件|分享的文件|文件名)\s*[::]?\s*(.+)/);
@@ -139,7 +139,7 @@
       var t = String(db[i].title || '');
       if (!t) continue;
       var lt = t.toLowerCase();
-      // 名字里含片名,或片名里含名字,都算命中;取最长的那个,避免「亮」匹配到「亮剑」
+      // 名字里含片名,或片名里含名字,都算命中;取最长的那个,免得一个字就误配
       if ((n.indexOf(lt) > -1 || lt.indexOf(n) > -1) && t.length > bestLen) {
         best = db[i]; bestLen = t.length;
       }

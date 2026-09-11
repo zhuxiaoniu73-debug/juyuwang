@@ -213,6 +213,13 @@
   }
   .log-empty { padding: 26px; text-align: center; color: var(--text-faint); font-size: 13px; }
 
+  #reset-all .hint code {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; color: var(--gold);
+  }
+  #reset-all .hint b { color: #ff7a63; }
+  #btn-wipe { border-color: rgba(229, 86, 63, .4); color: #ff7a63; }
+  #btn-wipe:hover { background: rgba(229, 86, 63, .14); }
+
   .source-warn {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
     margin: 16px var(--page-x) 0;
@@ -411,6 +418,16 @@
       <div class="form-actions">
         <button type="button" class="btn btn-primary" id="pending-merge">并入草稿</button>
         <button type="button" class="btn btn-ghost" id="pending-drop">丢弃</button>
+      </div>
+    </div>
+
+    <div class="panel" id="reset-all" style="margin-top: 20px">
+      <h2>从零开始</h2>
+      <p class="hint">把这台设备上本站存的东西一次清干净:录入台草稿、站上填的链接、
+        传的海报、运行日志。<b>清完不可恢复</b>,但不会动 <code>assets/js/data.js</code> ——
+        已经导出落盘的片子还在。</p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" id="btn-wipe">清空本机全部数据</button>
       </div>
     </div>
 

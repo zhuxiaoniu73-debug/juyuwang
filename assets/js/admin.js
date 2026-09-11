@@ -706,6 +706,36 @@
   // 页面开着时也可能冒出新错误(比如异步报错),兜底轮询
   setInterval(renderLog, 4000);
 
+  /* ------------------------------------------------- 一键清空本机数据 */
+  var wipeBtn = $('#btn-wipe');
+  if (wipeBtn) wipeBtn.addEventListener('click', function () {
+    var draftN = draft.length;
+    var linkN = window.MCLinks ? window.MCLinks.count() : 0;
+    var posterN = window.MCPoster ? Object.keys(window.MCPoster.all()).length : 0;
+    var logN = window.MCLog ? window.MCLog.all().length : 0;
+
+    if (!confirm('要清掉这台设备上本站存的全部数据:\n\n' +
+        '· 录入台草稿 ' + draftN + ' 条\n' +
+        '· 站上填的链接 ' + linkN + ' 条\n' +
+        '· 站上传的海报 ' + posterN + ' 张\n' +
+        '· 运行日志 ' + logN + ' 条\n\n' +
+        '清完不可恢复。assets/js/data.js 不受影响。\n\n确定吗?')) return;
+
+    try {
+      localStorage.removeItem('mc-admin-draft');
+      localStorage.removeItem('mc-links');
+      localStorage.removeItem('mc-posters');
+      localStorage.removeItem('mc-log');
+    } catch (e) {}
+
+    draft = JSON.parse(JSON.stringify(BASE));
+    clearForm();
+    renderList();
+    renderPending();
+    renderLog();
+    toast('清干净了 —— 现在是 ' + draft.length + ' 条(来自 data.js)');
+  });
+
   /* ------------------------------------------------------------ 启动 */
   clearForm();
   renderList();
