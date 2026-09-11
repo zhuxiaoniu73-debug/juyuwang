@@ -208,11 +208,14 @@
       document.getElementById('mc-save-one').addEventListener('click', function () {
         var r = parseShare(one.value);
         if (!r) { document.getElementById('mc-parsed').innerHTML = '<span class="mc-bad">没认出链接</span>'; return; }
-        window.MCLinks.set(current.id, r.url, r.code);
+        // 光存 "q5xx" 的话,详情页上就是个没头没尾的四个字符,看不出是什么
+        var note = r.code ? '提取码 ' + r.code : '';
+        window.MCLinks.set(current.id, r.url, note);
+        if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(current.id, r.url, note);
         one.value = '';
         show();
         renderPending();
-        flash('已存给「' + current.title + '」—— 刷新页面就能看到按钮亮起来');
+        flash('已存给「' + current.title + '」');
       });
     }
 
@@ -227,8 +230,10 @@
         if (!id) { bad.push(line + '  ← 库里没有这部'); return; }
         var r = parseShare(cols.slice(1).join(' ')) || parseShare(line);
         if (!r) { bad.push(line + '  ← 没认出链接'); return; }
-        var code = cols[2] && !/^https?:/i.test(cols[2]) ? cols[2].replace(/^提取码\s*[::]?\s*/, '') : r.code;
-        window.MCLinks.set(id, r.url, code);
+        var raw = cols[2] && !/^https?:/i.test(cols[2]) ? cols[2] : r.code;
+        var note = raw ? (/提取码|密码|访问码/.test(raw) ? raw : '提取码 ' + raw) : '';
+        window.MCLinks.set(id, r.url, note);
+        if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(id, r.url, note);
         okN++;
       });
       ta.value = bad.join('\n');

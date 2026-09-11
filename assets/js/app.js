@@ -936,20 +936,7 @@
       '<dl class="info-list">' + info + '</dl>' +
       (actors ? '<div class="detail-block"><h2>演员</h2><div class="actor-list">' + actors + '</div></div>' : '') +
       '<div class="detail-block"><h2>简介</h2><p class="detail-desc">' + esc(item.description) + '</p></div>' +
-      '<div class="detail-actions">' +
-        (resUrl
-          ? '<a class="btn btn-primary" href="' + esc(resUrl) + '" target="_blank" rel="noopener">' +
-              svg('play') + '资源入口</a>'
-          : '<span class="btn" aria-disabled="true">' + svg('link') + '暂无资源链接</span>') +
-        '<a class="btn btn-ghost" href="list.html?category=' + encodeURIComponent(item.category) + '">' +
-          svg('grid') + '更多' + esc(item.category) + '</a>' +
-        (resUrl
-          ? '<p class="resource-note">' + (item.resourceNote ? esc(item.resourceNote) : '') +
-            (item._localLink ? ' <b class="note-local">这条链接还没写进 data.js</b>' : '') + '</p>'
-          : '<p class="resource-note">' + (item.resource
-              ? '这条的资源链接不是有效地址,录入台里改一下。'
-              : '用 admin.html(录入台)或直接改 assets/js/data.js 填上 resource 字段,按钮就会亮起来。') + '</p>') +
-      '</div>';
+      actionsHTML(item);
 
     // 相关推荐:同分类下类型标签重合最多的
     var related = DB.filter(function (i) { return i.id !== item.id && i.category === item.category; })
@@ -964,6 +951,41 @@
     var rel = $('#related-section');
     if (rel) rel.hidden = related.length === 0;
   }
+
+  /** 详情页底部那块(资源按钮 + 提取码 + 更多X)。单独抽出来,好在存完链接后就地重绘 */
+  function actionsHTML(item) {
+    var url = safeUrl(item.resource);
+    return '<div class="detail-actions">' +
+      (url
+        ? '<a class="btn btn-primary" href="' + esc(url) + '" target="_blank" rel="noopener">' +
+            svg('play') + '资源入口</a>'
+        : '<span class="btn" aria-disabled="true">' + svg('link') + '暂无资源链接</span>') +
+      '<a class="btn btn-ghost" href="list.html?category=' + encodeURIComponent(item.category) + '">' +
+        svg('grid') + '更多' + esc(item.category) + '</a>' +
+      (url
+        ? '<p class="resource-note">' + (item.resourceNote ? esc(item.resourceNote) : '') +
+          (item._localLink ? ' <b class="note-local">这条链接还没写进 data.js</b>' : '') + '</p>'
+        : '<p class="resource-note">' + (item.resource
+            ? '这条的资源链接不是有效地址,录入台里改一下。'
+            : '还没填资源链接 —— 点右下角的「链接」,把网盘那段粘进来就行。') + '</p>') +
+    '</div>';
+  }
+
+  /* 「链接」模块存完后调这个:数据就地更新,按钮当场亮起来,不用刷新 */
+  window.MC_APPLY_LINK = function (id, resource, note) {
+    for (var i = 0; i < DB.length; i++) {
+      if (DB[i].id !== id) continue;
+      DB[i].resource = resource;
+      DB[i].resourceNote = note;
+      DB[i]._localLink = true;
+      var block = $('.detail-actions');
+      if (block && document.body.dataset.page === 'detail') {
+        block.outerHTML = actionsHTML(DB[i]);
+        LOG.info('资源按钮就地更新', id);
+      }
+      return;
+    }
+  };
 
   /** 详情页的海报上传:点、拖、粘贴都行,换完立刻生效 */
   function initPosterUpload(box, item) {

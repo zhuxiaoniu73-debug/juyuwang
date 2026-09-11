@@ -46,6 +46,13 @@
 
   /** 源文件坏了、而且手上没有草稿时,导出会造成数据丢失 —— 先问一句 */
   function exportGuard() {
+    // 站上填的链接/海报还没并进来,这时候导出会漏掉它们
+    var pend = (window.MCLinks ? window.MCLinks.count() : 0) +
+               (window.MCPoster ? Object.keys(window.MCPoster.all()).length : 0);
+    if (pend && SOURCE_OK) {
+      if (!confirm('你在站上填的 ' + pend + ' 项内容(链接/海报)还没并进草稿。\n\n' +
+          '现在导出不会包含它们。建议先点上面的「并入草稿」。\n\n仍要导出吗?')) return false;
+    }
     if (SOURCE_OK) return true;
     return confirm('assets/js/data.js 没能正常读取(多半是写出了语法错误)。\n\n' +
       '现在导出的内容不包含原文件里的片子,覆盖过去会把它们弄丢。\n' +
