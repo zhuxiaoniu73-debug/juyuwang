@@ -1303,6 +1303,27 @@ button, input, select { font: inherit; color: inherit; }
 
 .note-local { color: var(--gold); font-weight: 500; }
 
+/* 链接模块:片名输入 */
+.mc-field input[type="text"] {
+  width: 100%; padding: 11px 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+  font-size: 14px; font-family: inherit;
+}
+.mc-field input[type="text"]:focus {
+  outline: none; border-color: #2f4a52; background: rgba(255, 255, 255, .07);
+}
+.mc-namehint { margin-top: 7px; font-size: 12px; line-height: 1.7; color: var(--text-dim); }
+.mc-namehint b { color: var(--accent-soft); }
+.mc-dim { color: var(--text-faint); }
+.mc-usename {
+  margin-inline-start: 4px; height: 24px; padding: 0 9px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: rgba(41, 201, 126, .12); color: var(--accent-soft);
+  font-size: 11.5px; font-family: inherit; cursor: pointer;
+}
+.mc-usename:hover { background: rgba(41, 201, 126, .2); }
+
 /* 链接模块:这条归到哪部片 */
 .mc-target {
   margin-top: 10px; padding: 10px 12px;

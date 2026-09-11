@@ -233,13 +233,21 @@
   /* ---------------------------------------------------- 链接面板 */
   function renderLinkPanel(host) {
     current = window.MC_CURRENT || null;
+    var db = window.MEDIA_DB || [];
 
     host.innerHTML =
       '<div class="mc-field">' +
-        '<label for="mc-one">把网盘那段整个粘进来</label>' +
-        '<textarea id="mc-one" rows="4" placeholder="从网盘点「复制链接」得到的那一整段,连文件名和提取码一起"></textarea>' +
+        '<label for="mc-title">片名 —— 自己填</label>' +
+        '<input id="mc-title" type="text" list="mc-titles" autocomplete="off" placeholder="这条链接是哪部片子的">' +
+        '<datalist id="mc-titles">' + db.map(function (x) {
+          return '<option value="' + esc(x.title) + '"></option>';
+        }).join('') + '</datalist>' +
+        '<div class="mc-namehint" id="mc-namehint"></div>' +
+      '</div>' +
+      '<div class="mc-field">' +
+        '<label for="mc-one">网盘链接</label>' +
+        '<textarea id="mc-one" rows="3" placeholder="从网盘点「复制链接」得到的那一整段,连提取码一起粘进来"></textarea>' +
         '<div class="mc-parsed" id="mc-parsed"></div>' +
-        '<div class="mc-target" id="mc-target" hidden></div>' +
         '<div class="mc-row"><button type="button" class="btn btn-primary" id="mc-save-one" disabled>存起来</button></div>' +
       '</div>' +
       '<div class="mc-sep">或者一次填多条</div>' +
@@ -250,97 +258,68 @@
       '</div>' +
       '<div class="mc-pending" id="mc-pending"></div>';
 
+    var nameInput = document.getElementById('mc-title');
+    var nameHint = document.getElementById('mc-namehint');
     var one = document.getElementById('mc-one');
     var parsedBox = document.getElementById('mc-parsed');
-    var targetBox = document.getElementById('mc-target');
     var saveBtn = document.getElementById('mc-save-one');
-    var parsed = null;          // 当前解析结果
-    var target = null;          // { id, title, isNew }
+    var parsed = null;
 
-    /** 决定这条链接归到哪部片上 */
-    function decideTarget(r) {
-      // 详情页上就是当前这部,不用猜
-      if (current) return { id: current.id, title: current.title, isNew: false };
-      var hit = r.name ? matchEntry(r.name) : null;
-      if (hit) return { id: hit.id || hit.title, title: hit.title, isNew: false };
-      if (r.name) return { id: r.name, title: r.name, isNew: true };
-      return null;
-    }
+    // 在详情页上就是当前这部,先替你填好(想改随时改)
+    if (current) nameInput.value = current.title;
 
-    function drawTarget() {
-      if (!parsed) { targetBox.hidden = true; saveBtn.disabled = true; return; }
-      targetBox.hidden = false;
-      saveBtn.disabled = !target;
-
-      var db = window.MEDIA_DB || [];
-      var opts = db.map(function (x) {
-        var id = x.id || x.title;
-        return '<option value="' + esc(id) + '"' + (target && target.id === id && !target.isNew ? ' selected' : '') +
-               '>' + esc(x.title) + '</option>';
-      }).join('');
-
-      targetBox.innerHTML =
-        '<div class="mc-target-now">' +
-          (target
-            ? (target.isNew
-                ? '库里没有这部 —— 将<b>新建</b>《' + esc(target.title) + '》'
-                : '归到 <b>《' + esc(target.title) + '》</b>' +
-                  (current ? '(当前这部)' : parsed.name ? '(按文件名「' + esc(parsed.name) + '」认出来的)' : ''))
-            : '<span class="mc-bad">这段里没有文件名</span> —— 下面挑一部,或者用批量框手写片名') +
-        '</div>' +
-        '<div class="mc-target-pick">' +
-          '<select id="mc-pick"><option value="">— 换一部 —</option>' + opts + '</select>' +
-          (parsed.name && !(target && target.isNew)
-            ? '<button type="button" class="mc-newbtn" id="mc-new">新建《' + esc(parsed.name) + '》</button>'
-            : '') +
-        '</div>';
-
-      var pick = document.getElementById('mc-pick');
-      pick.addEventListener('change', function () {
-        if (!this.value) return;
-        var t = titleOfId(this.value);
-        target = { id: this.value, title: t, isNew: false };
-        drawTarget();
-      });
-      var nb = document.getElementById('mc-new');
-      if (nb) nb.addEventListener('click', function () {
-        target = { id: parsed.name, title: parsed.name, isNew: true };
-        drawTarget();
-      });
-    }
-
-    function onInput() {
-      var r = parseShare(one.value);
-      parsed = r;
-      if (!r) {
-        parsedBox.innerHTML = one.value.trim()
-          ? '<span class="mc-bad">没认出链接</span> —— 这段里得有个网址' : '';
-        target = null;
-        drawTarget();
+    function drawName() {
+      var name = nameInput.value.trim();
+      if (!name) {
+        // 粘的那段里如果带文件名,给一个一键填入的提示 —— 点了才填,不自作主张
+        var guess = parsed && parsed.name;
+        nameHint.innerHTML = guess
+          ? '这段里的文件名像是「' + esc(guess) + '」 <button type="button" class="mc-usename" id="mc-use">用这个</button>'
+          : '<span class="mc-dim">先填片名,下面才存得下去</span>';
+        var u = document.getElementById('mc-use');
+        if (u) u.addEventListener('click', function () { nameInput.value = guess; drawName(); drawSave(); });
         return;
       }
-      parsedBox.innerHTML =
-        '<span class="mc-ok">认出来了</span> <code>' + esc(r.url) + '</code>' +
-        (r.code ? ' · 提取码 <b>' + esc(r.code) + '</b>' : ' · 没找到提取码') +
-        (r.host ? ' · ' + esc(r.host) : '');
-      target = decideTarget(r);
-      drawTarget();
+      var hit = idOfTitle(name);
+      nameHint.innerHTML = hit
+        ? '<span class="mc-ok">库里已有</span>《' + esc(name) + '》—— 给它补上链接'
+        : '<span class="mc-dim">库里没有</span>「' + esc(name) + '」—— 会<b>新建</b>一部';
     }
 
-    one.addEventListener('input', onInput);
-    one.focus();
-    onInput();
+    function drawSave() {
+      saveBtn.disabled = !(parsed && nameInput.value.trim());
+    }
+
+    function onLink() {
+      var r = parseShare(one.value);
+      parsed = r;
+      parsedBox.innerHTML = r
+        ? '<span class="mc-ok">认出来了</span> <code>' + esc(r.url) + '</code>' +
+          (r.code ? ' · 提取码 <b>' + esc(r.code) + '</b>' : ' · 没找到提取码')
+        : (one.value.trim() ? '<span class="mc-bad">没认出链接</span> —— 这段里得有个网址' : '');
+      drawName();
+      drawSave();
+    }
+
+    nameInput.addEventListener('input', function () { drawName(); drawSave(); });
+    one.addEventListener('input', onLink);
+    (current ? one : nameInput).focus();
+    onLink();
 
     saveBtn.addEventListener('click', function () {
-      if (!parsed || !target) return;
+      var name = nameInput.value.trim();
+      if (!parsed || !name) return;
+      var id = idOfTitle(name) || name;
+      var isNew = !idOfTitle(name);
       var note = parsed.code ? '提取码 ' + parsed.code : '';
-      window.MCLinks.set(target.id, parsed.url, note, target.isNew ? target.title : '');
-      if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(target.id, parsed.url, note);
+      window.MCLinks.set(id, parsed.url, note, isNew ? name : '');
+      if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(id, parsed.url, note);
       one.value = '';
-      parsed = null; target = null;
-      onInput();
+      if (!current) nameInput.value = '';
+      parsed = null;
+      onLink();
       renderPending();
-      flash('已存给「' + (target && target.title) + '」');
+      flash(isNew ? '已新建《' + name + '》并存好链接' : '已存给《' + name + '》');
     });
 
     document.getElementById('mc-save-bulk').addEventListener('click', function () {
@@ -350,6 +329,7 @@
       lines.forEach(function (line) {
         var cols = line.split(/\s*[|｜\t]\s*/);
         var title = cols[0];
+        if (!title) { bad.push(line + '  ← 没有片名'); return; }
         var r = parseShare(cols.slice(1).join(' ')) || parseShare(line);
         if (!r) { bad.push(line + '  ← 没认出链接'); return; }
         var id = idOfTitle(title);
