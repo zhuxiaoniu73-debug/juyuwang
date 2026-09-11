@@ -31,11 +31,13 @@
     all: readAll,
     get: function (id) { return readAll()[id] || null; },
     count: function () { return Object.keys(readAll()).length; },
-    set: function (id, resource, note) {
+    /* title 只在「库里还没有这部」时给,录入台并入时据此新建条目 */
+    set: function (id, resource, note, title) {
       var m = readAll();
       m[id] = { resource: resource, resourceNote: note || '' };
+      if (title) m[id].title = title;
       var ok = writeAll(m);
-      if (ok) LOG.info('存了一条本地链接', id + ' → ' + resource + (note ? '(' + note + ')' : ''));
+      if (ok) LOG.info('存了一条本地链接', id + (title ? '(新建)' : '') + ' → ' + resource);
       return ok;
     },
     remove: function (id) {
@@ -86,8 +88,65 @@
 
     var host = '';
     try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) {}
-    return { url: url, code: code, host: host };
+
+    return { url: url, code: code, host: host, name: pickName(text), raw: text };
   }
+
+  /* 网盘分享那段的头一行通常带着文件名:
+       通过网盘分享的文件:亮剑.2005.1080P.国语中字.mkv
+     把它抠出来,再洗掉画质、字幕、集数这些噪音,就能拿去跟片库比对。 */
+  function pickName(text) {
+    var m = text.match(/(?:通过网盘分享的文件|我通过网盘分享的文件|分享的文件|文件名)\s*[::]?\s*(.+)/);
+    var raw = m ? m[1] : '';
+    if (!raw) {
+      // 没有那句提示时,取第一行里不像链接、不像提取码的内容
+      var first = text.split(/\n/)[0].trim();
+      if (first && !/https?:|提取码|密码|^链接/.test(first)) raw = first;
+    }
+    return cleanName(raw);
+  }
+
+  /** 洗掉文件名里的噪音,只留片名 */
+  function cleanName(s) {
+    s = String(s || '').trim();
+    if (!s) return '';
+    s = s.split(/[\n\r]/)[0];
+    s = s.replace(/\.(mkv|mp4|avi|rmvb|ts|m2ts|iso|zip|rar|7z|mov|wmv|flv)$/i, '');   // 扩展名
+    s = s.replace(/等\s*\d+\s*个文件$/, '');                                          // 「等 3 个文件」
+    s = s.replace(/[\[\(【（][^\]\)】）]*[\]\)】）]/g, ' ');                        // 方括号里的东西
+    // 画质 / 片源 / 音轨 / 字幕 / 编码这类标记
+    // 这些标记常和别的字粘在一起(BD1080P),不能要求词边界
+    s = s.replace(/(2160P|1080P|1080I|720P|480P|4K|UHD|BluRay|Blu-?ray|WEB-?DL|WEBRip|HDTV|HDR(?:10)?|REMUX|x264|x265|H\.?264|H\.?265|HEVC|60FPS|DDP?5\.1)/gi, ' ');
+    // 这几个短且容易误伤,要求前后是分隔符
+    s = s.replace(/\b(HD|BD|DV|AAC|DTS|AC3|TC|HQ)\b/gi, ' ');
+    s = s.replace(/(国语|粤语|英语|双语|中字|中英字幕|简中|繁中|内封|内嵌|无水印|高清|超清|蓝光|原盘|合集|全集|完结|未删减|修复版|导演剪辑版)/g, ' ');
+    s = s.replace(/(全\s*\d+\s*集|\d+\s*集全|共\s*\d+\s*集|\d+\s*集)/g, ' ');
+    s = s.replace(/(第[\s]*[0-9一二三四五六七八九十]+[\s]*季|S\d{1,2}(E\d{1,3})?|Season\s*\d+)/gi, ' ');
+    s = s.replace(/\b(19|20)\d{2}\b/g, ' ');                                          // 年份
+    s = s.replace(/[._\-+]+/g, ' ');                                                    // 分隔符
+    s = s.replace(/\s{2,}/g, ' ').trim();
+    return s;
+  }
+  window.MCLinks.clean = cleanName;
+
+  /** 拿洗过的名字去片库里找最像的一条 */
+  function matchEntry(name) {
+    var db = window.MEDIA_DB || [];
+    if (!name || !db.length) return null;
+    var n = name.toLowerCase();
+    var best = null, bestLen = 0;
+    for (var i = 0; i < db.length; i++) {
+      var t = String(db[i].title || '');
+      if (!t) continue;
+      var lt = t.toLowerCase();
+      // 名字里含片名,或片名里含名字,都算命中;取最长的那个,避免「亮」匹配到「亮剑」
+      if ((n.indexOf(lt) > -1 || lt.indexOf(n) > -1) && t.length > bestLen) {
+        best = db[i]; bestLen = t.length;
+      }
+    }
+    return best;
+  }
+  window.MCLinks.match = matchEntry;
   window.MCLinks.parse = parseShare;
 
   /* ------------------------------------------------------------ 界面 */
@@ -174,71 +233,139 @@
   /* ---------------------------------------------------- 链接面板 */
   function renderLinkPanel(host) {
     current = window.MC_CURRENT || null;
-    var pending = window.MCLinks.count();
 
     host.innerHTML =
-      (current
-        ? '<div class="mc-field">' +
-            '<label for="mc-one">粘贴 ——「' + esc(current.title) + '」的网盘分享</label>' +
-            '<textarea id="mc-one" rows="3" placeholder="从网盘点「复制链接」得到的那一整段,连提取码一起粘进来就行"></textarea>' +
-            '<div class="mc-parsed" id="mc-parsed"></div>' +
-            '<div class="mc-row"><button type="button" class="btn btn-primary" id="mc-save-one">存给这部片</button></div>' +
-          '</div><div class="mc-sep">或者批量填</div>'
-        : '') +
       '<div class="mc-field">' +
-        '<label for="mc-bulk">一行一部:<code>片名 | 链接 | 提取码</code></label>' +
-        '<textarea id="mc-bulk" rows="5" placeholder="片名 | 网盘地址 | 提取码&#10;片名 | 网盘地址"></textarea>' +
+        '<label for="mc-one">把网盘那段整个粘进来</label>' +
+        '<textarea id="mc-one" rows="4" placeholder="从网盘点「复制链接」得到的那一整段,连文件名和提取码一起"></textarea>' +
+        '<div class="mc-parsed" id="mc-parsed"></div>' +
+        '<div class="mc-target" id="mc-target" hidden></div>' +
+        '<div class="mc-row"><button type="button" class="btn btn-primary" id="mc-save-one" disabled>存起来</button></div>' +
+      '</div>' +
+      '<div class="mc-sep">或者一次填多条</div>' +
+      '<div class="mc-field">' +
+        '<label for="mc-bulk">一行一部:<code>片名 | 网盘地址 | 提取码</code></label>' +
+        '<textarea id="mc-bulk" rows="4" placeholder="片名 | 网盘地址 | 提取码&#10;片名 | 网盘地址"></textarea>' +
         '<div class="mc-row"><button type="button" class="btn btn-primary" id="mc-save-bulk">批量存</button></div>' +
       '</div>' +
       '<div class="mc-pending" id="mc-pending"></div>';
 
     var one = document.getElementById('mc-one');
-    if (one) {
-      var show = function () {
-        var r = parseShare(one.value);
-        var box = document.getElementById('mc-parsed');
-        box.innerHTML = r
-          ? '<span class="mc-ok">认出来了</span> <code>' + esc(r.url) + '</code>' +
-            (r.code ? ' · 提取码 <b>' + esc(r.code) + '</b>' : ' · 没找到提取码') +
-            (r.host ? ' · ' + esc(r.host) : '')
-          : (one.value.trim() ? '<span class="mc-bad">没认出链接</span> —— 里面得有个网址' : '');
-      };
-      one.addEventListener('input', show);
-      one.focus();
-      document.getElementById('mc-save-one').addEventListener('click', function () {
-        var r = parseShare(one.value);
-        if (!r) { document.getElementById('mc-parsed').innerHTML = '<span class="mc-bad">没认出链接</span>'; return; }
-        // 光存 "q5xx" 的话,详情页上就是个没头没尾的四个字符,看不出是什么
-        var note = r.code ? '提取码 ' + r.code : '';
-        window.MCLinks.set(current.id, r.url, note);
-        if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(current.id, r.url, note);
-        one.value = '';
-        show();
-        renderPending();
-        flash('已存给「' + current.title + '」');
+    var parsedBox = document.getElementById('mc-parsed');
+    var targetBox = document.getElementById('mc-target');
+    var saveBtn = document.getElementById('mc-save-one');
+    var parsed = null;          // 当前解析结果
+    var target = null;          // { id, title, isNew }
+
+    /** 决定这条链接归到哪部片上 */
+    function decideTarget(r) {
+      // 详情页上就是当前这部,不用猜
+      if (current) return { id: current.id, title: current.title, isNew: false };
+      var hit = r.name ? matchEntry(r.name) : null;
+      if (hit) return { id: hit.id || hit.title, title: hit.title, isNew: false };
+      if (r.name) return { id: r.name, title: r.name, isNew: true };
+      return null;
+    }
+
+    function drawTarget() {
+      if (!parsed) { targetBox.hidden = true; saveBtn.disabled = true; return; }
+      targetBox.hidden = false;
+      saveBtn.disabled = !target;
+
+      var db = window.MEDIA_DB || [];
+      var opts = db.map(function (x) {
+        var id = x.id || x.title;
+        return '<option value="' + esc(id) + '"' + (target && target.id === id && !target.isNew ? ' selected' : '') +
+               '>' + esc(x.title) + '</option>';
+      }).join('');
+
+      targetBox.innerHTML =
+        '<div class="mc-target-now">' +
+          (target
+            ? (target.isNew
+                ? '库里没有这部 —— 将<b>新建</b>《' + esc(target.title) + '》'
+                : '归到 <b>《' + esc(target.title) + '》</b>' +
+                  (current ? '(当前这部)' : parsed.name ? '(按文件名「' + esc(parsed.name) + '」认出来的)' : ''))
+            : '<span class="mc-bad">这段里没有文件名</span> —— 下面挑一部,或者用批量框手写片名') +
+        '</div>' +
+        '<div class="mc-target-pick">' +
+          '<select id="mc-pick"><option value="">— 换一部 —</option>' + opts + '</select>' +
+          (parsed.name && !(target && target.isNew)
+            ? '<button type="button" class="mc-newbtn" id="mc-new">新建《' + esc(parsed.name) + '》</button>'
+            : '') +
+        '</div>';
+
+      var pick = document.getElementById('mc-pick');
+      pick.addEventListener('change', function () {
+        if (!this.value) return;
+        var t = titleOfId(this.value);
+        target = { id: this.value, title: t, isNew: false };
+        drawTarget();
+      });
+      var nb = document.getElementById('mc-new');
+      if (nb) nb.addEventListener('click', function () {
+        target = { id: parsed.name, title: parsed.name, isNew: true };
+        drawTarget();
       });
     }
+
+    function onInput() {
+      var r = parseShare(one.value);
+      parsed = r;
+      if (!r) {
+        parsedBox.innerHTML = one.value.trim()
+          ? '<span class="mc-bad">没认出链接</span> —— 这段里得有个网址' : '';
+        target = null;
+        drawTarget();
+        return;
+      }
+      parsedBox.innerHTML =
+        '<span class="mc-ok">认出来了</span> <code>' + esc(r.url) + '</code>' +
+        (r.code ? ' · 提取码 <b>' + esc(r.code) + '</b>' : ' · 没找到提取码') +
+        (r.host ? ' · ' + esc(r.host) : '');
+      target = decideTarget(r);
+      drawTarget();
+    }
+
+    one.addEventListener('input', onInput);
+    one.focus();
+    onInput();
+
+    saveBtn.addEventListener('click', function () {
+      if (!parsed || !target) return;
+      var note = parsed.code ? '提取码 ' + parsed.code : '';
+      window.MCLinks.set(target.id, parsed.url, note, target.isNew ? target.title : '');
+      if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(target.id, parsed.url, note);
+      one.value = '';
+      parsed = null; target = null;
+      onInput();
+      renderPending();
+      flash('已存给「' + (target && target.title) + '」');
+    });
 
     document.getElementById('mc-save-bulk').addEventListener('click', function () {
       var ta = document.getElementById('mc-bulk');
       var lines = ta.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
-      var okN = 0, bad = [];
+      var okN = 0, newN = 0, bad = [];
       lines.forEach(function (line) {
         var cols = line.split(/\s*[|｜\t]\s*/);
         var title = cols[0];
-        var id = idOfTitle(title);
-        if (!id) { bad.push(line + '  ← 库里没有这部'); return; }
         var r = parseShare(cols.slice(1).join(' ')) || parseShare(line);
         if (!r) { bad.push(line + '  ← 没认出链接'); return; }
+        var id = idOfTitle(title);
+        var isNew = !id;
+        if (isNew) { id = title; newN++; }
         var raw = cols[2] && !/^https?:/i.test(cols[2]) ? cols[2] : r.code;
         var note = raw ? (/提取码|密码|访问码/.test(raw) ? raw : '提取码 ' + raw) : '';
-        window.MCLinks.set(id, r.url, note);
+        window.MCLinks.set(id, r.url, note, isNew ? title : '');
         if (window.MC_APPLY_LINK) window.MC_APPLY_LINK(id, r.url, note);
         okN++;
       });
       ta.value = bad.join('\n');
       renderPending();
-      flash(okN ? '存了 ' + okN + ' 条' + (bad.length ? ',' + bad.length + ' 行没处理' : '') : '一条都没认出来');
+      flash(okN ? '存了 ' + okN + ' 条' + (newN ? '(其中新建 ' + newN + ' 部)' : '') +
+                  (bad.length ? ',' + bad.length + ' 行没处理' : '')
+                : '一条都没认出来');
       if (bad.length) LOG.warn('批量填链接有没处理的行', bad.slice(0, 3).join(' / '));
     });
 
@@ -252,16 +379,18 @@
       box.innerHTML =
         '<div class="mc-sep">本地已填 ' + ids.length + ' 条(还没写进 data.js)</div>' +
         '<ul class="mc-list">' + ids.map(function (id) {
-          return '<li><span class="mc-li-name">' + esc(titleOfId(id)) + '</span>' +
-            '<span class="mc-li-url">' + esc(m[id].resource) + '</span>' +
-            (m[id].resourceNote ? '<span class="mc-li-code">' + esc(m[id].resourceNote) + '</span>' : '') +
+          var v = m[id];
+          return '<li><span class="mc-li-name">' + esc(v.title || titleOfId(id)) +
+            (v.title ? '<em class="mc-li-new">新</em>' : '') + '</span>' +
+            '<span class="mc-li-url">' + esc(v.resource) + '</span>' +
+            (v.resourceNote ? '<span class="mc-li-code">' + esc(v.resourceNote) + '</span>' : '') +
             '<button type="button" class="mc-li-del" data-id="' + esc(id) + '" aria-label="删掉">×</button></li>';
         }).join('') + '</ul>' +
         '<p class="mc-hint">这些先存在浏览器里,站上已经生效。' +
         '去<b>录入台</b>点「并入草稿」再导出 data.js,才算真正存下来。</p>' +
         '<div class="mc-row"><button type="button" class="btn btn-ghost" id="mc-copy-links">复制成文本</button></div>';
-      box.querySelectorAll('.mc-li-del').forEach(function (b) {
-        b.addEventListener('click', function () { window.MCLinks.remove(b.dataset.id); renderPending(); });
+      box.querySelectorAll('.mc-li-del').forEach(function (bt) {
+        bt.addEventListener('click', function () { window.MCLinks.remove(bt.dataset.id); renderPending(); });
       });
       var cp = document.getElementById('mc-copy-links');
       if (cp) cp.addEventListener('click', function () {

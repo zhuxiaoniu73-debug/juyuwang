@@ -562,7 +562,8 @@
       $('#pending-links').innerHTML = lIds.map(function (id) {
         var t = titleOf(id), v = links[id];
         return '<li>' +
-          '<span class="plink-name">' + esc(t || id) + (t ? '' : ' <em>(草稿里没有)</em>') + '</span>' +
+          '<span class="plink-name">' + esc(t || v.title || id) +
+            (t ? '' : (v.title ? ' <em>(将新建)</em>' : ' <em>(对不上)</em>')) + '</span>' +
           '<span class="plink-url">' + esc(v.resource) + '</span>' +
           (v.resourceNote ? '<span class="plink-code">' + esc(v.resourceNote) + '</span>' : '') +
         '</li>';
@@ -597,11 +598,24 @@
     var posters = window.MCPoster ? window.MCPoster.all() : {};
     var nL = 0, nP = 0, miss = 0;
 
+    var created = 0;
     Object.keys(links).forEach(function (id) {
+      var v = links[id];
       var hit = findEntry(id);
-      if (!hit) { miss++; return; }
-      hit.resource = links[id].resource;
-      if (links[id].resourceNote) hit.resourceNote = links[id].resourceNote;
+      if (!hit) {
+        // 站上新建的片子,这里补成一条正式记录
+        if (!v.title) { miss++; return; }
+        hit = {
+          id: id, title: v.title,
+          category: CATEGORIES.length ? CATEGORIES[0].name : '电影',
+          genres: [], year: new Date().getFullYear(), region: '中国',
+          actors: [], description: '', resource: '', added: today(), hot: false
+        };
+        draft.unshift(hit);
+        created++;
+      }
+      hit.resource = v.resource;
+      if (v.resourceNote) hit.resourceNote = v.resourceNote;
       nL++;
     });
     Object.keys(posters).forEach(function (id) {
@@ -617,9 +631,11 @@
     if (nP && window.MCPoster) window.MCPoster.clear();
     renderList();
     renderPending();
-    LOG.info('并入本地内容', '链接 ' + nL + ' 条,海报 ' + nP + ' 张' + (miss ? ',' + miss + ' 项对不上条目' : ''));
+    LOG.info('并入本地内容', '链接 ' + nL + ' 条,海报 ' + nP + ' 张' +
+             (created ? ',新建条目 ' + created + ' 部' : '') + (miss ? ',' + miss + ' 项对不上' : ''));
     var parts = [];
     if (nL) parts.push('链接 ' + nL + ' 条');
+    if (created) parts.push('新建 ' + created + ' 部');
     if (nP) parts.push('海报 ' + nP + ' 张');
     toast('并入 ' + parts.join('、') + (miss ? '(' + miss + ' 项对不上)' : '') + ' —— 记得导出 data.js');
   });

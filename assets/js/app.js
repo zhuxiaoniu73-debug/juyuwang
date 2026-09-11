@@ -59,8 +59,10 @@
   /* 站内「链接」模块填的网盘地址,同样先盖在数据上,立刻生效 */
   if (window.MCLinks) {
     var localLinks = window.MCLinks.all();
-    var linkUsed = 0;
+    var linkUsed = 0, linkNew = 0;
+    var known = {};
     DB.forEach(function (it) {
+      known[it.id] = true;
       var v = localLinks[it.id];
       if (v && v.resource) {
         it.resource = v.resource;
@@ -69,7 +71,21 @@
         linkUsed++;
       }
     });
-    if (linkUsed) LOG.info('套用本地链接', linkUsed + ' 条(尚未写进 data.js)');
+    // 站上现填的、库里原本没有的片子,先当成一条临时记录显示出来
+    Object.keys(localLinks).forEach(function (id) {
+      var v = localLinks[id];
+      if (known[id] || !v.title) return;
+      var stub = normalize({ id: id, title: v.title, resource: v.resource,
+                             resourceNote: v.resourceNote, added: '' }, DB.length);
+      stub._localLink = true;
+      stub._localNew = true;
+      DB.push(stub);
+      linkNew++;
+    });
+    if (linkUsed || linkNew) {
+      LOG.info('套用本地链接', linkUsed + ' 条' + (linkNew ? ',另新建 ' + linkNew + ' 部' : '') +
+               '(尚未写进 data.js)');
+    }
   }
   if (!DB_OK) {
     LOG.error('data.js 没读进来', 'window.MEDIA_DB 不是数组,多半是文件里有语法错误');
@@ -964,7 +980,9 @@
         svg('grid') + '更多' + esc(item.category) + '</a>' +
       (url
         ? '<p class="resource-note">' + (item.resourceNote ? esc(item.resourceNote) : '') +
-          (item._localLink ? ' <b class="note-local">这条链接还没写进 data.js</b>' : '') + '</p>'
+          (item._localNew
+            ? ' <b class="note-local">这部是刚在站上新建的,还没写进 data.js</b>'
+            : item._localLink ? ' <b class="note-local">这条链接还没写进 data.js</b>' : '') + '</p>'
         : '<p class="resource-note">' + (item.resource
             ? '这条的资源链接不是有效地址,录入台里改一下。'
             : '还没填资源链接 —— 点右下角的「链接」,把网盘那段粘进来就行。') + '</p>') +

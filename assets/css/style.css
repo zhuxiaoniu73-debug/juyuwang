@@ -1302,3 +1302,30 @@ button, input, select { font: inherit; color: inherit; }
 .mc-flash.is-on { opacity: 1; transform: translate(-50%, 0); }
 
 .note-local { color: var(--gold); font-weight: 500; }
+
+/* 链接模块:这条归到哪部片 */
+.mc-target {
+  margin-top: 10px; padding: 10px 12px;
+  border: 1px solid var(--line-soft); border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+}
+.mc-target-now { font-size: 12.5px; line-height: 1.7; color: var(--text-dim); }
+.mc-target-now b { color: var(--accent-soft); font-weight: 600; }
+.mc-target-pick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.mc-target-pick select {
+  flex: 1 1 150px; min-width: 0; height: 32px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2); color: var(--text); font-size: 12.5px; font-family: inherit;
+}
+.mc-newbtn {
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: rgba(41, 201, 126, .12); color: var(--accent-soft);
+  font-size: 12.5px; font-family: inherit; cursor: pointer; white-space: nowrap;
+}
+.mc-newbtn:hover { background: rgba(41, 201, 126, .2); }
+.mc-li-new {
+  margin-inline-start: 5px; padding: 0 5px; border-radius: 4px;
+  background: rgba(41, 201, 126, .16); color: var(--accent-soft);
+  font-style: normal; font-size: 10.5px;
+}
